@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+
+{% block title %}Encuestas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Encuestas de Satisfacción</h1>
+
+{% if encuestas %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Reserva</th>
+                <th>Cliente</th>
+                <th>Calificación</th>
+                <th>Comentarios</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for encuesta in encuestas %}
+            <tr>
+                <td>#{{ encuesta.idEncuesta }}</td>
+                <td>#{{ encuesta.reserva.idReserva }}</td>
+                <td>{{ encuesta.reserva.cliente.nombre }}</td>
+                <td>
+                    {% for i in "12345" %}
+                        {% if forloop.counter <= encuesta.calificacion %}★{% else %}☆{% endif %}
+                    {% endfor %}
+                    ({{ encuesta.calificacion }}/5)
+                </td>
+                <td>{{ encuesta.comentarios|truncatewords:20 }}</td>
+                <td>{{ encuesta.fecha }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No hay encuestas registradas.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

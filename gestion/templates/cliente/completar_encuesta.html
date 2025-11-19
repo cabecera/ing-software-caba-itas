@@ -1,0 +1,31 @@
+{% extends 'base.html' %}
+
+{% block title %}Completar Encuesta - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Completar Encuesta de Satisfacción</h1>
+
+<div class="card" class="mb-30">
+    <h3>Detalles de la Reserva</h3>
+    <p><strong>Cabaña:</strong> {{ reserva.cabaña.nombre }}</p>
+    <p><strong>Fechas:</strong> {{ reserva.fechaInicio }} - {{ reserva.fechaFin }}</p>
+    <p><strong>Personas:</strong> {{ reserva.numPersonas }}</p>
+</div>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="id_calificacion">Calificación (1-5 estrellas):</label>
+        {{ form.calificacion }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_comentarios">Comentarios:</label>
+        {{ form.comentarios }}
+    </div>
+
+    <button type="submit" class="btn btn-success">Enviar Encuesta</button>
+    <a href="{% url 'mis_reservas' %}" class="btn">Cancelar</a>
+</form>
+{% endblock %}
+

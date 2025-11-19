@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Inventario - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Inventario de Cabañas</h1>
+
+<div class="card mb-30">
+    <h3>Registrar Nuevo Implemento</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_nombre">Nombre:</label>
+            {{ form.nombre }}
+        </div>
+        <div class="form-group">
+            <label for="id_descripcion">Descripción:</label>
+            {{ form.descripcion }}
+        </div>
+        <div class="form-group">
+            <label for="id_cantidadTotal">Cantidad Total:</label>
+            {{ form.cantidadTotal }}
+        </div>
+        <div class="form-group">
+            <label for="id_cantidadDisponible">Cantidad Disponible:</label>
+            {{ form.cantidadDisponible }}
+        </div>
+        <div class="form-group">
+            <label for="id_estado">Estado:</label>
+            {{ form.estado }}
+        </div>
+        <button type="submit" class="btn btn-success">Registrar Implemento</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Listado de Implementos</h3>
+    {% if implementos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Disponible</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for implemento in implementos %}
+                <tr>
+                    <td>{{ implemento.nombre }}</td>
+                    <td>{{ implemento.descripcion|truncatewords:10 }}</td>
+                    <td>{{ implemento.cantidadDisponible }}</td>
+                    <td>{{ implemento.cantidadTotal }}</td>
+                    <td>
+                        <span class="status-{{ implemento.estado }}">
+                            {{ implemento.get_estado_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay implementos registrados.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block title %}Preparar Cabañas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Preparar Cabañas para Reservas Próximas</h1>
+
+<div class="card">
+    <h3>Reservas que Requieren Preparación</h3>
+    {% if reservas_proximas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID Reserva</th>
+                    <th>Cliente</th>
+                    <th>Cabaña</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Personas</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas_proximas %}
+                <tr>
+                    <td>#{{ reserva.idReserva }}</td>
+                    <td>{{ reserva.cliente.nombre }}</td>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }}</td>
+                    <td>{{ reserva.fechaFin }}</td>
+                    <td>{{ reserva.numPersonas }}</td>
+                    <td>
+                        <form method="post" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+                            <button type="submit" class="btn btn-primary">Enviar Notificación de Preparación</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay reservas próximas que requieran preparación.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

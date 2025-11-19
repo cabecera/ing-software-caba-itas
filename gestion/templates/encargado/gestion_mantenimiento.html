@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Mantenimiento - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Gestión de Mantenimiento</h1>
+
+<div class="card" class="mb-30">
+    <h3>Registrar Nuevo Mantenimiento</h3>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_cabaña">Cabaña:</label>
+            {{ form.cabaña }}
+        </div>
+        <div class="form-group">
+            <label for="id_tipo">Tipo:</label>
+            {{ form.tipo }}
+        </div>
+        <div class="form-group">
+            <label for="id_descripcion">Descripción:</label>
+            {{ form.descripcion }}
+        </div>
+        <div class="form-group">
+            <label for="id_fechaProgramada">Fecha Programada:</label>
+            {{ form.fechaProgramada }}
+        </div>
+        <button type="submit" class="btn btn-success">Registrar Mantenimiento</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Mantenimientos Registrados</h3>
+    {% if mantenimientos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cabaña</th>
+                    <th>Tipo</th>
+                    <th>Descripción</th>
+                    <th>Fecha Programada</th>
+                    <th>Fecha Ejecución</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mantenimiento in mantenimientos %}
+                <tr>
+                    <td>#{{ mantenimiento.idMantenimiento }}</td>
+                    <td>{{ mantenimiento.cabaña.nombre }}</td>
+                    <td>{{ mantenimiento.get_tipo_display }}</td>
+                    <td>{{ mantenimiento.descripcion|truncatewords:10 }}</td>
+                    <td>{{ mantenimiento.fechaProgramada }}</td>
+                    <td>{{ mantenimiento.fechaEjecucion|default:"-" }}</td>
+                    <td>{{ mantenimiento.get_estado_display }}</td>
+                    <td>
+                        {% if mantenimiento.estado != 'completado' %}
+                            <a href="{% url 'finalizar_mantenimiento' mantenimiento.idMantenimiento %}" class="btn btn-success">Finalizar</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay mantenimientos registrados.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

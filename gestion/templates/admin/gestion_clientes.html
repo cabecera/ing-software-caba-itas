@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Clientes - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Gestión de Clientes</h1>
+
+{% if clientes %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Email</th>
+                <th>Teléfono</th>
+                <th>Tipo</th>
+                <th>Reservas</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cliente in clientes %}
+            <tr>
+                <td>#{{ cliente.idCliente }}</td>
+                <td>{{ cliente.nombre }}</td>
+                <td>{{ cliente.email }}</td>
+                <td>{{ cliente.telefono }}</td>
+                <td>{{ cliente.tipoCliente }}</td>
+                <td>{{ cliente.reservas.count }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No hay clientes registrados.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

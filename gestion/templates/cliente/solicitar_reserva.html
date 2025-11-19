@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitar Reserva - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Solicitar Nueva Reserva</h1>
+
+<form method="post">
+    {% csrf_token %}
+    <div class="form-group">
+        <label for="id_cabaña">Cabaña:</label>
+        {{ form.cabaña }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_fechaInicio">Fecha de Inicio:</label>
+        {{ form.fechaInicio }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_fechaFin">Fecha de Fin:</label>
+        {{ form.fechaFin }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_numPersonas">Número de Personas:</label>
+        {{ form.numPersonas }}
+    </div>
+
+    <div class="form-group">
+        <label for="id_comentarios">Comentarios (opcional):</label>
+        {{ form.comentarios }}
+    </div>
+
+    <button type="submit" class="btn btn-success">Solicitar Reserva</button>
+    <a href="{% url 'portal_cliente' %}" class="btn">Cancelar</a>
+</form>
+
+<div class="card" class="mt-30">
+    <h3>Cabañas Disponibles</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Nombre</th>
+                <th>Capacidad</th>
+                <th>Precio por Noche</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cabaña in cabañas %}
+            <tr>
+                <td>{{ cabaña.nombre }}</td>
+                <td>{{ cabaña.capacidad }} personas</td>
+                <td>${{ cabaña.precioNoche }}</td>
+                <td>{{ cabaña.get_estado_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+

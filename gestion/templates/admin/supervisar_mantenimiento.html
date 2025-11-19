@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block title %}Supervisar Mantenimiento - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Supervisar Mantenimientos</h1>
+
+{% if mantenimientos %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cabaña</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Fecha Programada</th>
+                <th>Fecha Ejecución</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mantenimiento in mantenimientos %}
+            <tr>
+                <td>#{{ mantenimiento.idMantenimiento }}</td>
+                <td>{{ mantenimiento.cabaña.nombre }}</td>
+                <td>{{ mantenimiento.get_tipo_display }}</td>
+                <td>{{ mantenimiento.descripcion|truncatewords:10 }}</td>
+                <td>{{ mantenimiento.fechaProgramada }}</td>
+                <td>{{ mantenimiento.fechaEjecucion|default:"-" }}</td>
+                <td>{{ mantenimiento.get_estado_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No hay mantenimientos registrados.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

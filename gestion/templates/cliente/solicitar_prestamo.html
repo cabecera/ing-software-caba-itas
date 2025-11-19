@@ -1,0 +1,60 @@
+{% extends 'base.html' %}
+
+{% block title %}Solicitar Préstamo - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Solicitar Préstamo de Implementos</h1>
+
+{% if reservas_activas %}
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_implemento">Implemento:</label>
+            {{ form.implemento }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_cantidad">Cantidad:</label>
+            {{ form.cantidad }}
+        </div>
+
+        <div class="form-group">
+            <label for="id_fechaPrestamo">Fecha de Préstamo:</label>
+            {{ form.fechaPrestamo }}
+        </div>
+
+        <button type="submit" class="btn btn-success">Solicitar Préstamo</button>
+        <a href="{% url 'portal_cliente' %}" class="btn">Cancelar</a>
+    </form>
+
+    <div class="card" class="mt-30">
+        <h3>Implementos Disponibles</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Disponible</th>
+                    <th>Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for implemento in implementos %}
+                <tr>
+                    <td>{{ implemento.nombre }}</td>
+                    <td>{{ implemento.descripcion|truncatewords:10 }}</td>
+                    <td>{{ implemento.cantidadDisponible }}</td>
+                    <td>{{ implemento.cantidadTotal }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% else %}
+    <div class="card">
+        <p>Debes tener una reserva activa para solicitar préstamos de implementos.</p>
+        <a href="{% url 'solicitar_reserva' %}" class="btn btn-success">Solicitar Reserva</a>
+    </div>
+{% endif %}
+{% endblock %}
+

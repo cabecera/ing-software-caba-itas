@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+
+{% block title %}Mi Portal - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Bienvenido, {{ cliente.nombre }}</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <h4>{{ reservas|length }}</h4>
+        <p>Reservas Recientes</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ notificaciones|length }}</h4>
+        <p>Notificaciones Pendientes</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Mis Reservas Recientes</h3>
+    {% if reservas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cabaña</th>
+                    <th>Fecha Inicio</th>
+                    <th>Fecha Fin</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas %}
+                <tr>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }}</td>
+                    <td>{{ reserva.fechaFin }}</td>
+                    <td>{{ reserva.get_estado_display }}</td>
+                    <td>
+                        <a href="{% url 'completar_encuesta' reserva.idReserva %}" class="btn btn-primary">Completar Encuesta</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No tienes reservas aún. <a href="{% url 'solicitar_reserva' %}">Solicita una reserva</a></p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Notificaciones</h3>
+    {% if notificaciones %}
+        <ul>
+            {% for notif in notificaciones %}
+            <li class="notification-item">
+                <strong>{{ notif.get_tipo_display }}:</strong> {{ notif.mensaje }}
+                <small class="notification-date">{{ notif.fechaEnvio|date:"d/m/Y H:i" }}</small>
+            </li>
+            {% endfor %}
+        </ul>
+    {% else %}
+        <p>No tienes notificaciones pendientes.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'solicitar_reserva' %}" class="btn btn-success">Solicitar Nueva Reserva</a>
+    <a href="{% url 'mis_reservas' %}" class="btn">Ver Todas mis Reservas</a>
+    <a href="{% url 'solicitar_prestamo' %}" class="btn">Solicitar Préstamo de Implementos</a>
+</div>
+{% endblock %}
+

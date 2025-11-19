@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Encargado - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard Encargado</h1>
+
+<div class="card">
+    <h3>Mantenimientos Pendientes (Próximos 7 días)</h3>
+    {% if mantenimientos_pendientes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cabaña</th>
+                    <th>Tipo</th>
+                    <th>Fecha Programada</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for mantenimiento in mantenimientos_pendientes %}
+                <tr>
+                    <td>{{ mantenimiento.cabaña.nombre }}</td>
+                    <td>{{ mantenimiento.get_tipo_display }}</td>
+                    <td>{{ mantenimiento.fechaProgramada }}</td>
+                    <td>{{ mantenimiento.get_estado_display }}</td>
+                    <td>
+                        {% if mantenimiento.estado != 'completado' %}
+                            <a href="{% url 'finalizar_mantenimiento' mantenimiento.idMantenimiento %}" class="btn btn-success">Finalizar</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay mantenimientos pendientes.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Alertas de Faltantes de Insumos</h3>
+    {% if implementos_faltantes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Implemento</th>
+                    <th>Disponible</th>
+                    <th>Total</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for implemento in implementos_faltantes %}
+                <tr>
+                    <td>{{ implemento.nombre }}</td>
+                    <td>{{ implemento.cantidadDisponible }}</td>
+                    <td>{{ implemento.cantidadTotal }}</td>
+                    <td>
+                        <span class="error-text">
+                            {{ implemento.get_estado_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay alertas de faltantes.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Reservas Próximas (Preparación)</h3>
+    {% if reservas_proximas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Cabaña</th>
+                    <th>Fecha Inicio</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas_proximas %}
+                <tr>
+                    <td>{{ reserva.cliente.nombre }}</td>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }}</td>
+                    <td>
+                        <form method="post" action="{% url 'preparar_cabañas' %}" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+                            <button type="submit" class="btn btn-primary">Enviar Notificación</button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay reservas próximas que requieran preparación.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'inventario_cabañas' %}" class="btn">Gestionar Inventario</a>
+    <a href="{% url 'gestion_mantenimiento' %}" class="btn">Gestionar Mantenimiento</a>
+    <a href="{% url 'prestamos_implementos' %}" class="btn">Préstamos de Implementos</a>
+    <a href="{% url 'estado_cabañas' %}" class="btn">Estado de Cabañas</a>
+</div>
+{% endblock %}
+

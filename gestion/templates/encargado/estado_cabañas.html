@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+
+{% block title %}Estado de Cabañas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Estado de Cabañas</h1>
+
+<div class="card">
+    <h3>Gestionar Estados</h3>
+    {% if cabañas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nombre</th>
+                    <th>Capacidad</th>
+                    <th>Precio/Noche</th>
+                    <th>Estado Actual</th>
+                    <th>Cambiar Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cabaña in cabañas %}
+                <tr>
+                    <td>#{{ cabaña.idCabaña }}</td>
+                    <td>{{ cabaña.nombre }}</td>
+                    <td>{{ cabaña.capacidad }} personas</td>
+                    <td>${{ cabaña.precioNoche }}</td>
+                    <td>
+                        <span class="status-badge-inline status-{{ cabaña.estado }}">
+                            {{ cabaña.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        <form method="post" class="inline-form">
+                            {% csrf_token %}
+                            <input type="hidden" name="cabaña_id" value="{{ cabaña.idCabaña }}">
+                            <select name="estado" onchange="this.form.submit()">
+                                <option value="disponible" {% if cabaña.estado == 'disponible' %}selected{% endif %}>Disponible</option>
+                                <option value="ocupada" {% if cabaña.estado == 'ocupada' %}selected{% endif %}>Ocupada</option>
+                                <option value="mantenimiento" {% if cabaña.estado == 'mantenimiento' %}selected{% endif %}>Mantenimiento</option>
+                                <option value="reservada" {% if cabaña.estado == 'reservada' %}selected{% endif %}>Reservada</option>
+                            </select>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay cabañas registradas.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

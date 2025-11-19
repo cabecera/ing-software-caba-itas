@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+
+{% block title %}Registro de Pagos - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Registro de Pagos</h1>
+
+<div class="card" class="mb-30">
+    <h3>Registrar Nuevo Pago</h3>
+    <form method="post" enctype="multipart/form-data">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="id_reserva">Reserva:</label>
+            {{ form.reserva }}
+        </div>
+        <div class="form-group">
+            <label for="id_monto">Monto:</label>
+            {{ form.monto }}
+        </div>
+        <div class="form-group">
+            <label for="id_metodo">Método de Pago:</label>
+            {{ form.metodo }}
+        </div>
+        <div class="form-group">
+            <label for="id_fechaPago">Fecha de Pago:</label>
+            {{ form.fechaPago }}
+        </div>
+        <div class="form-group">
+            <label for="id_comprobante">Comprobante (opcional):</label>
+            {{ form.comprobante }}
+        </div>
+        <button type="submit" class="btn btn-success">Registrar Pago</button>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Historial de Pagos</h3>
+    {% if pagos %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Reserva</th>
+                    <th>Cliente</th>
+                    <th>Monto</th>
+                    <th>Método</th>
+                    <th>Fecha</th>
+                    <th>Comprobante</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pago in pagos %}
+                <tr>
+                    <td>#{{ pago.idPago }}</td>
+                    <td>#{{ pago.reserva.idReserva }}</td>
+                    <td>{{ pago.reserva.cliente.nombre }}</td>
+                    <td>${{ pago.monto }}</td>
+                    <td>{{ pago.get_metodo_display }}</td>
+                    <td>{{ pago.fechaPago }}</td>
+                    <td>
+                        {% if pago.comprobante %}
+                            <a href="{{ pago.comprobante.url }}" target="_blank">Ver</a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay pagos registrados.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

@@ -1,0 +1,76 @@
+{% extends 'base.html' %}
+
+{% block title %}Dashboard Administrador - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Dashboard Administrador</h1>
+
+<div class="stats">
+    <div class="stat-card">
+        <h4>{{ total_reservas }}</h4>
+        <p>Total Reservas</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ reservas_pendientes }}</h4>
+        <p>Reservas Pendientes</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ reservas_proximas }}</h4>
+        <p>Reservas Próximas (7 días)</p>
+    </div>
+    <div class="stat-card">
+        <h4>${{ ingresos_mes|floatformat:0 }}</h4>
+        <p>Ingresos del Mes</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ tasa_ocupacion|floatformat:1 }}%</h4>
+        <p>Tasa de Ocupación</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Reservas Recientes</h3>
+    {% if reservas_recientes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cliente</th>
+                    <th>Cabaña</th>
+                    <th>Fechas</th>
+                    <th>Estado</th>
+                    <th>Monto</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas_recientes %}
+                <tr>
+                    <td>#{{ reserva.idReserva }}</td>
+                    <td>{{ reserva.cliente.nombre }}</td>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }} - {{ reserva.fechaFin }}</td>
+                    <td>{{ reserva.get_estado_display }}</td>
+                    <td>${{ reserva.montoCotizado }}</td>
+                    <td>
+                        {% if reserva.estado == 'pendiente' %}
+                            <a href="{% url 'aprobar_reserva' reserva.idReserva %}" class="btn btn-success">Aprobar</a>
+                            <a href="{% url 'cancelar_reserva' reserva.idReserva %}" class="btn btn-danger">Cancelar</a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay reservas registradas.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'gestion_reservas' %}" class="btn">Ver Todas las Reservas</a>
+    <a href="{% url 'registro_pagos' %}" class="btn">Registrar Pago</a>
+    <a href="{% url 'reportes_generales' %}" class="btn">Ver Reportes</a>
+</div>
+{% endblock %}
+

@@ -1,0 +1,56 @@
+{% extends 'base.html' %}
+
+{% block title %}Mis Reservas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Mis Reservas</h1>
+
+{% if reservas %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cabaña</th>
+                <th>Fecha Inicio</th>
+                <th>Fecha Fin</th>
+                <th>Personas</th>
+                <th>Monto</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reserva in reservas %}
+            <tr>
+                <td>#{{ reserva.idReserva }}</td>
+                <td>{{ reserva.cabaña.nombre }}</td>
+                <td>{{ reserva.fechaInicio }}</td>
+                <td>{{ reserva.fechaFin }}</td>
+                <td>{{ reserva.numPersonas }}</td>
+                <td>${{ reserva.montoCotizado }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ reserva.estado }}">
+                        {{ reserva.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if reserva.estado == 'completada' and not reserva.encuesta %}
+                        <a href="{% url 'completar_encuesta' reserva.idReserva %}" class="btn btn-primary">Completar Encuesta</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No tienes reservas registradas.</p>
+        <a href="{% url 'solicitar_reserva' %}" class="btn btn-success">Solicitar Primera Reserva</a>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'portal_cliente' %}" class="btn">Volver al Portal</a>
+</div>
+{% endblock %}
+
