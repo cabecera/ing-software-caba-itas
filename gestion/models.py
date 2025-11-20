@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
@@ -76,6 +77,9 @@ class Reserva(models.Model):
     montoCotizado = models.DecimalField(max_digits=10, decimal_places=2)
     comentarios = models.TextField(blank=True)
     fechaCreacion = models.DateTimeField(auto_now_add=True)
+    # Nuevos campos para confirmación del cliente
+    confirmacion_cliente = models.BooleanField(default=False, verbose_name='Confirmación Cliente')
+    fecha_confirmacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Confirmación')
 
     def registrarReserva(self):
         """Registra una nueva reserva"""
@@ -91,11 +95,19 @@ class Reserva(models.Model):
         self.save()
 
     def generarAlerta(self):
-        """Genera alertas para reservas próximas"""
+        """Genera alertas para reservas próximas - Actualizado para 4 días exactos"""
         hoy = timezone.now().date()
         dias_restantes = (self.fechaInicio - hoy).days
 
-        if dias_restantes == 7:
+        # Alerta a 4 días exactos para confirmación
+        if dias_restantes == 4 and not self.confirmacion_cliente:
+            Notificacion.objects.create(
+                usuario=self.cliente.usuario if self.cliente.usuario else None,
+                tipo='recordatorio',
+                mensaje=f'Por favor confirme su reserva en {self.cabaña.nombre} que inicia en 4 días. Fecha: {self.fechaInicio}',
+                fechaEnvio=timezone.now()
+            )
+        elif dias_restantes == 7:
             Notificacion.objects.create(
                 usuario=self.cliente.usuario if self.cliente.usuario else None,
                 tipo='alerta',
@@ -109,6 +121,46 @@ class Reserva(models.Model):
                 mensaje=f'Su reserva en {self.cabaña.nombre} es en 3 días',
                 fechaEnvio=timezone.now()
             )
+
+    def confirmar_reserva_cliente(self):
+        """Confirma la reserva por parte del cliente"""
+        self.confirmacion_cliente = True
+        self.fecha_confirmacion = timezone.now()
+        self.save()
+
+    @staticmethod
+    def verificar_disponibilidad_cabaña(cabaña, fecha_inicio, fecha_fin):
+        """Verifica disponibilidad de cabaña considerando mantenimientos"""
+        # Verificar si hay mantenimientos activos en el rango de fechas
+        mantenimientos = Mantenimiento.objects.filter(
+            cabaña=cabaña,
+            fechaProgramada__lte=fecha_fin,
+            estado__in=['programado', 'en_proceso']
+        )
+
+        # Si hay un mantenimiento programado, verificar si hay fecha de ejecución
+        for mantenimiento in mantenimientos:
+            # Si no tiene fecha de ejecución, asumir que el mantenimiento afecta toda la fecha programada
+            if not mantenimiento.fechaEjecucion:
+                if mantenimiento.fechaProgramada <= fecha_fin:
+                    return False
+            # Si tiene fecha de ejecución, verificar si se solapa
+            elif mantenimiento.fechaEjecucion >= fecha_inicio:
+                return False
+
+        # Verificar si la cabaña está en mantenimiento
+        if cabaña.estado == 'mantenimiento':
+            return False
+
+        # Verificar reservas existentes
+        reservas_existentes = Reserva.objects.filter(
+            cabaña=cabaña,
+            estado__in=['confirmada', 'pendiente'],
+        ).filter(
+            Q(fechaInicio__lte=fecha_fin) & Q(fechaFin__gte=fecha_inicio)
+        )
+
+        return not reservas_existentes.exists()
 
     def enviarNotificacionPreparacion(self):
         """Envía notificación de preparación"""
@@ -339,4 +391,166 @@ class Notificacion(models.Model):
         verbose_name = "Notificación"
         verbose_name_plural = "Notificaciones"
         ordering = ['-fechaEnvio']
+
+
+class ChecklistInventario(models.Model):
+    """Modelo para checklist de inventario por cabaña"""
+    CATEGORIAS = [
+        ('cocina', 'Cocina'),
+        ('baño', 'Baño'),
+        ('dormitorio', 'Dormitorio'),
+        ('sala', 'Sala'),
+        ('exterior', 'Exterior'),
+        ('otros', 'Otros'),
+    ]
+
+    idChecklist = models.AutoField(primary_key=True)
+    cabaña = models.ForeignKey(Cabaña, on_delete=models.CASCADE, related_name='checklist_inventario')
+    nombre_item = models.CharField(max_length=100, verbose_name='Nombre del Item')
+    categoria = models.CharField(max_length=50, choices=CATEGORIAS, default='otros', verbose_name='Categoría')
+    cantidad_esperada = models.IntegerField(default=1, verbose_name='Cantidad Esperada')
+    es_obligatorio = models.BooleanField(default=True, verbose_name='Es Obligatorio')
+    precio_reposicion = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name='Precio Reposición')
+    orden = models.IntegerField(default=0, verbose_name='Orden')
+
+    # Propiedad para compatibilidad con código que usa .item
+    @property
+    def item(self):
+        return self.nombre_item
+
+    def __str__(self):
+        return f"{self.nombre_item} - {self.cabaña.nombre}"
+
+    class Meta:
+        verbose_name = "Item de Checklist"
+        verbose_name_plural = "Checklist de Inventario"
+        ordering = ['cabaña', 'orden', 'categoria', 'nombre_item']
+
+
+class EntregaCabaña(models.Model):
+    """Modelo para registro de entrega de cabaña a cliente"""
+    ESTADOS = [
+        ('pendiente', 'Pendiente de Entrega'),
+        ('entregada', 'Cabaña Entregada'),
+        ('devuelta', 'Cabaña Devuelta'),
+        ('verificada', 'Inventario Verificado'),
+    ]
+
+    idEntrega = models.AutoField(primary_key=True)
+    reserva = models.OneToOneField(Reserva, on_delete=models.CASCADE, related_name='entrega')
+    fecha_entrega = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Entrega')
+    fecha_devolucion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Devolución')
+    encargado_entrega = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                         related_name='entregas_realizadas', verbose_name='Encargado Entrega')
+    cliente_confirma_entrega = models.BooleanField(default=False, verbose_name='Cliente Confirma Entrega')
+    cliente_confirma_devolucion = models.BooleanField(default=False, verbose_name='Cliente Confirma Devolución')
+    observaciones_entrega = models.TextField(blank=True, verbose_name='Observaciones Entrega')
+    observaciones_devolucion = models.TextField(blank=True, verbose_name='Observaciones Devolución')
+    firma_digital_entrega = models.CharField(max_length=255, blank=True, verbose_name='Firma Digital Entrega')
+    firma_digital_devolucion = models.CharField(max_length=255, blank=True, verbose_name='Firma Digital Devolución')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente', verbose_name='Estado')
+
+    # Compatibilidad con campos anteriores
+    @property
+    def cliente_confirma(self):
+        return self.cliente_confirma_entrega
+
+    @property
+    def fecha_checkout(self):
+        return self.fecha_devolucion
+
+    @property
+    def observaciones_checkout(self):
+        return self.observaciones_devolucion
+
+    @property
+    def firma_digital(self):
+        return self.firma_digital_entrega
+
+    def generar_firma_digital(self, tipo='entrega'):
+        """Genera un hash único como firma digital"""
+        import hashlib
+        from django.utils import timezone
+        timestamp = timezone.now().timestamp()
+        if tipo == 'entrega':
+            cadena = f"{self.reserva.idReserva}-{self.reserva.cliente.idCliente}-{timestamp}-entrega"
+        else:
+            cadena = f"{self.reserva.idReserva}-{self.reserva.cliente.idCliente}-{timestamp}-devolucion"
+        return hashlib.sha256(cadena.encode()).hexdigest()
+
+    def __str__(self):
+        return f"Entrega #{self.idEntrega} - Reserva #{self.reserva.idReserva} - {self.get_estado_display()}"
+
+    class Meta:
+        verbose_name = "Entrega de Cabaña"
+        verbose_name_plural = "Entregas de Cabañas"
+        ordering = ['-fecha_entrega']
+
+
+class ItemVerificacion(models.Model):
+    """Modelo para registro del estado de cada item en cada entrega"""
+    ESTADOS = [
+        ('bueno', 'Buen Estado'),
+        ('regular', 'Estado Regular'),
+        ('danado', 'Dañado'),
+        ('faltante', 'Faltante'),
+    ]
+
+    idItemVerificacion = models.AutoField(primary_key=True)
+    entrega = models.ForeignKey(EntregaCabaña, on_delete=models.CASCADE, related_name='items_verificacion')
+    item = models.ForeignKey(ChecklistInventario, on_delete=models.CASCADE, related_name='verificaciones')
+    cantidad_entregada = models.IntegerField(default=0, verbose_name='Cantidad Entregada')
+    cantidad_devuelta = models.IntegerField(default=0, verbose_name='Cantidad Devuelta')
+    estado_entregado = models.CharField(max_length=20, choices=ESTADOS, default='bueno', verbose_name='Estado Entregado')
+    estado_devuelto = models.CharField(max_length=20, choices=ESTADOS, default='bueno', verbose_name='Estado Devuelto')
+    requiere_reposicion = models.BooleanField(default=False, verbose_name='Requiere Reposición')
+    cargo_aplicado = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, verbose_name='Cargo Aplicado')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+
+    def calcular_cargo(self):
+        """Calcula el cargo por faltantes o daños"""
+        cargo = 0
+        if self.cantidad_devuelta < self.cantidad_entregada:
+            faltantes = self.cantidad_entregada - self.cantidad_devuelta
+            cargo += faltantes * self.item.precio_reposicion
+
+        if self.estado_devuelto == 'danado' and self.cantidad_devuelta > 0:
+            cargo += (self.cantidad_devuelta * self.item.precio_reposicion * 0.5)  # 50% del valor por daño
+
+        if self.estado_devuelto == 'regular' and self.cantidad_devuelta > 0:
+            cargo += (self.cantidad_devuelta * self.item.precio_reposicion * 0.2)  # 20% del valor por estado regular
+
+        self.cargo_aplicado = cargo
+        self.requiere_reposicion = cargo > 0
+        self.save()
+        return cargo
+
+    def __str__(self):
+        return f"Verificación: {self.item.nombre_item} - Entrega #{self.entrega.idEntrega}"
+
+    class Meta:
+        verbose_name = "Item de Verificación"
+        verbose_name_plural = "Items de Verificación"
+        ordering = ['entrega', 'item__orden', 'item__categoria']
+
+
+class ItemFaltante(models.Model):
+    """Modelo legacy para compatibilidad - usar ItemVerificacion en su lugar"""
+    idItemFaltante = models.AutoField(primary_key=True)
+    entrega = models.ForeignKey(EntregaCabaña, on_delete=models.CASCADE, related_name='items_faltantes')
+    item_checklist = models.ForeignKey(ChecklistInventario, on_delete=models.CASCADE, related_name='faltantes')
+    cantidad_faltante = models.IntegerField(default=1, verbose_name='Cantidad Faltante')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+
+    def calcular_cargo(self):
+        """Calcula el cargo por el item faltante"""
+        return self.item_checklist.precio_reposicion * self.cantidad_faltante
+
+    def __str__(self):
+        return f"Faltante: {self.item_checklist.nombre_item} - Cantidad: {self.cantidad_faltante}"
+
+    class Meta:
+        verbose_name = "Item Faltante"
+        verbose_name_plural = "Items Faltantes"
+        ordering = ['entrega', 'item_checklist']
 

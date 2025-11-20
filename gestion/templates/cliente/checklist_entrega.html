@@ -1,0 +1,133 @@
+{% extends 'base.html' %}
+
+{% block title %}Checklist de Entrega - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Checklist de Inventario - {{ reserva.cabaña.nombre }}</h1>
+
+<div class="card">
+    <h3>Información de la Reserva</h3>
+    <div class="info-group">
+        <p><strong>Reserva #:</strong> {{ reserva.idReserva }}</p>
+        <p><strong>Cabaña:</strong> {{ reserva.cabaña.nombre }}</p>
+        <p><strong>Fecha de Inicio:</strong> {{ reserva.fechaInicio }}</p>
+        <p><strong>Fecha de Fin:</strong> {{ reserva.fechaFin }}</p>
+        {% if entrega.cliente_confirma %}
+        <p><strong>Estado:</strong> <span class="status-badge-inline status-confirmada">Confirmado</span></p>
+        <p><strong>Firma Digital:</strong> {{ entrega.firma_digital|truncatechars:20 }}</p>
+        {% endif %}
+    </div>
+</div>
+
+{% if es_checkout %}
+<div class="card">
+    <div class="alert alert-info">
+        <h4>Check-out Pendiente</h4>
+        <p>El check-out debe ser verificado por el encargado. Por favor contacte al personal al momento de su salida.</p>
+        {% if entrega.estado == 'verificada' %}
+        <p><strong>Estado:</strong> Verificación completada por encargado.</p>
+        {% if entrega.fecha_devolucion %}
+        <p><strong>Fecha de Devolución:</strong> {{ entrega.fecha_devolucion|date:"d/m/Y H:i" }}</p>
+        {% endif %}
+        {% endif %}
+    </div>
+    <a href="{% url 'mis_reservas' %}" class="btn">Volver a Mis Reservas</a>
+</div>
+{% else %}
+<div class="card">
+    {% if entrega.estado == 'entregada' and not entrega.cliente_confirma_entrega %}
+    <h3>Confirmación de Recepción - Check-in</h3>
+    <p class="alert alert-info">El encargado ha completado la verificación del inventario. Por favor revise y confirme la recepción.</p>
+
+    {% for categoria, items in categorias_items.items %}
+    <div class="checklist-categoria">
+        <h4>{{ categoria|upper }}</h4>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Cantidad Entregada</th>
+                <th>Estado Verificado por Encargado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item_ver in items %}
+            <tr class="item-{{ item_ver.estado_entregado }}">
+                <td>
+                    <strong>{{ item_ver.item.nombre_item }}</strong>
+                    {% if item_ver.item.es_obligatorio %}
+                    <span class="badge badge-warning">Obligatorio</span>
+                    {% endif %}
+                </td>
+                <td>{{ item_ver.cantidad_entregada }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ item_ver.estado_entregado }}">
+                        {{ item_ver.get_estado_entregado_display }}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% empty %}
+    <p class="alert alert-warning">El encargado aún no ha completado la verificación del inventario.</p>
+    {% endfor %}
+
+    {% if entrega.observaciones_entrega %}
+    <div class="alert alert-info mt-30">
+        <p><strong>Observaciones del Encargado:</strong></p>
+        <p>{{ entrega.observaciones_entrega }}</p>
+    </div>
+    {% endif %}
+
+    <div class="alert alert-warning mt-30">
+        <p><strong>Al confirmar, usted acepta que:</strong></p>
+        <ul>
+            <li>Ha revisado el inventario verificado por el encargado</li>
+            <li>Está de acuerdo con el estado registrado de cada item</li>
+            <li>Se responsabiliza por cualquier daño o faltante durante su estadía</li>
+            <li>Se generará una firma digital como evidencia de aceptación</li>
+        </ul>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <input type="hidden" name="tipo" value="entrega">
+        <div class="form-actions mt-30">
+            <button type="submit" class="btn btn-success">Confirmar Recepción y Generar Firma Digital</button>
+            <a href="{% url 'mis_reservas' %}" class="btn">Volver</a>
+        </div>
+    </form>
+    {% elif entrega.estado == 'pendiente' %}
+    <div class="alert alert-info">
+        <h4>Esperando Verificación del Encargado</h4>
+        <p>El encargado aún no ha completado la verificación del inventario. Este proceso se realizará el día de su llegada.</p>
+        <p>Una vez completada la verificación, recibirá una notificación para confirmar la recepción.</p>
+    </div>
+    <a href="{% url 'mis_reservas' %}" class="btn">Volver a Mis Reservas</a>
+    {% else %}
+    <div class="alert alert-success">
+        <h4>Check-in Confirmado</h4>
+        <p>Ya ha confirmado la entrega de la cabaña el {{ entrega.fecha_entrega|date:"d/m/Y H:i" }}.</p>
+        <p><strong>Firma Digital de Entrega:</strong> <code>{{ entrega.firma_digital_entrega|truncatechars:30 }}</code></p>
+        {% if entrega.observaciones_entrega %}
+        <p><strong>Observaciones:</strong> {{ entrega.observaciones_entrega }}</p>
+        {% endif %}
+
+        {% if es_checkout %}
+        <p class="alert alert-warning mt-30">
+            <strong>Check-out:</strong> El encargado realizará la verificación de devolución al momento de su salida.
+        </p>
+        {% else %}
+        <p class="mt-30">El check-out estará disponible después del {{ reserva.fechaFin }}.</p>
+        {% endif %}
+
+        <a href="{% url 'mis_reservas' %}" class="btn">Volver a Mis Reservas</a>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+{% endblock %}
+

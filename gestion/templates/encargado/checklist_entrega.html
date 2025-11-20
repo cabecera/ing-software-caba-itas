@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}Checklist de Entrega - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Checklist de Entrega - {{ reserva.cabaña.nombre }}</h1>
+
+<div class="card">
+    <h3>Información de la Reserva</h3>
+    <div class="info-group">
+        <p><strong>Reserva #:</strong> {{ reserva.idReserva }}</p>
+        <p><strong>Cliente:</strong> {{ reserva.cliente.nombre }}</p>
+        <p><strong>Cabaña:</strong> {{ reserva.cabaña.nombre }}</p>
+        <p><strong>Fecha de Inicio:</strong> {{ reserva.fechaInicio }}</p>
+        <p><strong>Fecha de Fin:</strong> {{ reserva.fechaFin }}</p>
+        <p><strong>Número de Personas:</strong> {{ reserva.numPersonas }}</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Verificación de Inventario - Check-in</h3>
+    <p class="alert alert-info">Verifique cada item del inventario y registre su estado. El cliente confirmará la recepción después.</p>
+
+    <form method="post">
+        {% csrf_token %}
+
+        {% for categoria, items in categorias_items.items %}
+        <div class="checklist-categoria">
+            <h4>{{ categoria|upper }}</h4>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Cantidad Esperada</th>
+                    <th>Cantidad Entregada</th>
+                    <th>Estado</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_ver in items %}
+                <tr class="item-{{ item_ver.estado_entregado }}">
+                    <td>
+                        <strong>{{ item_ver.item.nombre_item }}</strong>
+                        {% if item_ver.item.es_obligatorio %}
+                        <span class="badge badge-warning">Obligatorio</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item_ver.item.cantidad_esperada }}</td>
+                    <td>
+                        <input type="number"
+                               name="cantidad_{{ item_ver.idItemVerificacion }}"
+                               value="{{ item_ver.cantidad_entregada }}"
+                               min="0"
+                               max="{{ item_ver.item.cantidad_esperada }}"
+                               class="form-control"
+                               style="width: 80px;"
+                               required>
+                    </td>
+                    <td>
+                        <select name="estado_{{ item_ver.idItemVerificacion }}" class="form-control">
+                            <option value="bueno" {% if item_ver.estado_entregado == 'bueno' %}selected{% endif %}>✅ Buen Estado</option>
+                            <option value="regular" {% if item_ver.estado_entregado == 'regular' %}selected{% endif %}>⚠️ Estado Regular</option>
+                            <option value="danado" {% if item_ver.estado_entregado == 'danado' %}selected{% endif %}>⚠️ Dañado</option>
+                            <option value="faltante" {% if item_ver.estado_entregado == 'faltante' %}selected{% endif %}>❌ Faltante</option>
+                        </select>
+                    </td>
+                    <td>
+                        <input type="text"
+                               name="obs_{{ item_ver.idItemVerificacion }}"
+                               value="{{ item_ver.observaciones }}"
+                               placeholder="Observaciones..."
+                               class="form-control">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% empty %}
+        <p class="alert alert-warning">No hay items registrados en el checklist para esta cabaña. Contacte al administrador.</p>
+        {% endfor %}
+
+        <div class="form-group mt-30">
+            <label for="observaciones_entrega"><strong>Observaciones Generales de Entrega:</strong></label>
+            <textarea name="observaciones_entrega"
+                      id="observaciones_entrega"
+                      rows="4"
+                      class="form-control"
+                      placeholder="Observaciones sobre el estado general de la cabaña al momento de la entrega...">{{ entrega.observaciones_entrega }}</textarea>
+        </div>
+
+        <div class="form-actions mt-30">
+            <button type="submit" class="btn btn-success">Completar Verificación de Entrega</button>
+            <a href="{% url 'dashboard_encargado' %}" class="btn">Volver</a>
+        </div>
+    </form>
+</div>
+{% endblock %}
+

@@ -5,7 +5,59 @@
 {% block content %}
 <h1 class="page-title">Mis Reservas</h1>
 
+{% if reservas_por_confirmar %}
+<div class="card alert alert-warning" style="border-left: 4px solid #ff9800; margin-bottom: 30px;">
+    <h3>Reservas por Confirmar (4 días antes)</h3>
+    <p>Las siguientes reservas requieren su confirmación. Por favor confírmelas para que podamos preparar las cabañas adecuadamente.</p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Cabaña</th>
+                <th>Fecha Inicio</th>
+                <th>Días Restantes</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reserva in reservas_por_confirmar %}
+            <tr>
+                <td>#{{ reserva.idReserva }}</td>
+                <td>{{ reserva.cabaña.nombre }}</td>
+                <td>{{ reserva.fechaInicio }}</td>
+                <td>
+                    {% if hoy >= reserva.fechaInicio %}
+                        <strong class="error-text">¡HOY O PASADO!</strong>
+                    {% else %}
+                        <strong>{{ reserva.fechaInicio|timesince:hoy }}</strong>
+                    {% endif %}
+                </td>
+                <td>
+                    <span class="status-badge-inline status-{{ reserva.estado }}">
+                        {{ reserva.get_estado_display }}
+                    </span>
+                    {% if not reserva.confirmacion_cliente %}
+                    <span class="badge badge-warning">Pendiente Confirmación</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if reserva.estado == 'confirmada' and not reserva.confirmacion_cliente %}
+                        <a href="{% url 'confirmar_reserva_cliente' reserva.idReserva %}" class="btn btn-success">
+                            Confirmar Reserva
+                        </a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
 {% if reservas %}
+    <h3>Todas mis Reservas</h3>
     <table>
         <thead>
             <tr>
@@ -16,6 +68,7 @@
                 <th>Personas</th>
                 <th>Monto</th>
                 <th>Estado</th>
+                <th>Confirmación Cliente</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -34,8 +87,32 @@
                     </span>
                 </td>
                 <td>
+                    {% if reserva.confirmacion_cliente %}
+                        <span class="badge badge-success">✓ Confirmada</span>
+                        {% if reserva.fecha_confirmacion %}
+                        <br><small>{{ reserva.fecha_confirmacion|date:"d/m/Y" }}</small>
+                        {% endif %}
+                    {% else %}
+                        <span class="badge badge-warning">Pendiente</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if reserva.estado == 'confirmada' and not reserva.confirmacion_cliente %}
+                        {% if hoy <= reserva.fechaInicio %}
+                            <a href="{% url 'confirmar_reserva_cliente' reserva.idReserva %}" class="btn btn-success btn-sm">
+                                Confirmar
+                            </a>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if reserva.confirmacion_cliente and reserva.fechaInicio <= hoy %}
+                        <a href="{% url 'checklist_entrega' reserva.idReserva %}" class="btn btn-primary btn-sm">
+                            Checklist Entrega
+                        </a>
+                    {% endif %}
+
                     {% if reserva.estado == 'completada' and not reserva.encuesta %}
-                        <a href="{% url 'completar_encuesta' reserva.idReserva %}" class="btn btn-primary">Completar Encuesta</a>
+                        <a href="{% url 'completar_encuesta' reserva.idReserva %}" class="btn btn-primary btn-sm">Completar Encuesta</a>
                     {% endif %}
                 </td>
             </tr>

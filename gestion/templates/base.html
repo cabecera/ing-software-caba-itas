@@ -20,6 +20,8 @@
                         <li><a href="{% url 'registro_pagos' %}">Pagos</a></li>
                         <li><a href="{% url 'reportes_generales' %}">Reportes</a></li>
                         <li><a href="{% url 'gestion_clientes' %}">Clientes</a></li>
+                        <li><a href="{% url 'gestion_incidentes' %}">Incidentes</a></li>
+                        <li><a href="{% url 'historial_entregas' %}">Entregas</a></li>
                         <li><a href="/admin/">Admin Django</a></li>
                     {% elif user.groups.all %}
                         {% for group in user.groups.all %}

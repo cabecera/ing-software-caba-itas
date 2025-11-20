@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Incidentes - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Gestión de Incidentes y Mantenimientos</h1>
+
+<div class="card">
+    <h3>Cabañas en Mantenimiento</h3>
+    {% if cabañas_mantenimiento %}
+    <table>
+        <thead>
+            <tr>
+                <th>Cabaña</th>
+                <th>Capacidad</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cabaña in cabañas_mantenimiento %}
+            <tr>
+                <td>{{ cabaña.nombre }}</td>
+                <td>{{ cabaña.capacidad }} personas</td>
+                <td>
+                    <span class="status-badge-inline status-mantenimiento">
+                        {{ cabaña.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    <a href="{% url 'estado_cabañas' %}" class="btn btn-primary">Cambiar Estado</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No hay cabañas en mantenimiento actualmente.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Mantenimientos Activos</h3>
+    {% if mantenimientos_activos %}
+    <table>
+        <thead>
+            <tr>
+                <th>Cabaña</th>
+                <th>Tipo</th>
+                <th>Fecha Programada</th>
+                <th>Estado</th>
+                <th>Descripción</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for mantenimiento in mantenimientos_activos %}
+            <tr>
+                <td>{{ mantenimiento.cabaña.nombre }}</td>
+                <td>{{ mantenimiento.get_tipo_display }}</td>
+                <td>{{ mantenimiento.fechaProgramada }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ mantenimiento.estado }}">
+                        {{ mantenimiento.get_estado_display }}
+                    </span>
+                </td>
+                <td>{{ mantenimiento.descripcion|truncatewords:10 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No hay mantenimientos activos actualmente.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Reservas Afectadas por Mantenimientos</h3>
+    {% if reservas_afectadas %}
+    <p class="alert alert-warning">
+        Las siguientes reservas están afectadas por mantenimientos programados.
+        Por favor, contacte a los clientes y ofrézcales alternativas.
+    </p>
+
+    {% for mantenimiento, reserva in reservas_afectadas %}
+    <div class="card" style="margin-bottom: 20px; border-left: 4px solid #ff9800;">
+        <h4>Reserva #{{ reserva.idReserva }} - {{ reserva.cliente.nombre }}</h4>
+        <div class="info-group">
+            <p><strong>Cabaña Original:</strong> {{ reserva.cabaña.nombre }} (En Mantenimiento)</p>
+            <p><strong>Fecha Inicio:</strong> {{ reserva.fechaInicio }}</p>
+            <p><strong>Fecha Fin:</strong> {{ reserva.fechaFin }}</p>
+            <p><strong>Mantenimiento:</strong> {{ mantenimiento.get_tipo_display }} - {{ mantenimiento.fechaProgramada }}</p>
+            <p><strong>Estado Reserva:</strong>
+                <span class="status-badge-inline status-{{ reserva.estado }}">
+                    {{ reserva.get_estado_display }}
+                </span>
+            </p>
+        </div>
+
+        <form method="post" class="mt-30">
+            {% csrf_token %}
+            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+
+            <div class="form-group">
+                <label><strong>Reasignar a Otra Cabaña:</strong></label>
+                <select name="nueva_cabaña" class="form-control">
+                    <option value="">Seleccione una cabaña alternativa...</option>
+                    {% for cabaña in cabañas_disponibles %}
+                    {% if cabaña.idCabaña != reserva.cabaña.idCabaña %}
+                    <option value="{{ cabaña.idCabaña }}">{{ cabaña.nombre }} (Cap: {{ cabaña.capacidad }})</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+
+            <button type="submit" name="accion" value="reasignar" class="btn btn-success">
+                Reasignar Reserva
+            </button>
+        </form>
+
+        <form method="post" class="mt-30">
+            {% csrf_token %}
+            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+
+            <div class="form-group">
+                <label><strong>Reprogramar Reserva:</strong></label>
+                <div style="display: flex; gap: 10px;">
+                    <input type="date" name="nueva_fecha_inicio" class="form-control" placeholder="Nueva Fecha Inicio" required>
+                    <input type="date" name="nueva_fecha_fin" class="form-control" placeholder="Nueva Fecha Fin" required>
+                </div>
+            </div>
+
+            <button type="submit" name="accion" value="reprogramar" class="btn btn-primary">
+                Reprogramar Reserva
+            </button>
+        </form>
+
+        <form method="post" class="mt-30">
+            {% csrf_token %}
+            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+            <button type="submit" name="accion" value="cancelar" class="btn btn-danger"
+                    onclick="return confirm('¿Está seguro de cancelar esta reserva? Se notificará al cliente.')">
+                Cancelar Reserva
+            </button>
+        </form>
+    </div>
+    {% endfor %}
+    {% else %}
+    <p>No hay reservas afectadas por mantenimientos actualmente.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+    <a href="{% url 'gestion_reservas' %}" class="btn">Ver Todas las Reservas</a>
+    <a href="{% url 'supervisar_mantenimiento' %}" class="btn">Supervisar Mantenimientos</a>
+</div>
+{% endblock %}
+

@@ -1,0 +1,578 @@
+╔══════════════════════════════════════════════════════════════════════════════════════╗
+║                   DIAGRAMA DE BASE DE DATOS - SISTEMA "LAS CABAÑITAS"                ║
+║                          Sistema de Gestión de Reservas                              ║
+╚══════════════════════════════════════════════════════════════════════════════════════╝
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                                  TABLAS PRINCIPALES                                  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 1. auth_user (Django - Sistema de Autenticación)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  id                  INTEGER AUTO_INCREMENT
+        username            VARCHAR(150) UNIQUE NOT NULL
+        email               VARCHAR(254)
+        password            VARCHAR(128)        [hashed]
+        first_name          VARCHAR(150)
+        last_name           VARCHAR(150)
+        is_staff            BOOLEAN DEFAULT False
+        is_active           BOOLEAN DEFAULT True
+        is_superuser        BOOLEAN DEFAULT False
+        date_joined         DATETIME
+        last_login          DATETIME
+
+    RELACIONES:
+        └──> OneToOne -> Cliente.usuario
+        └──> OneToMany -> Notificacion.usuario
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 2. gestion_cliente
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idCliente           INTEGER AUTO_INCREMENT
+        nombre              VARCHAR(200) NOT NULL
+        telefono            VARCHAR(20) NOT NULL
+        email               VARCHAR(254) NOT NULL
+        direccion           TEXT NOT NULL
+        tipoCliente         VARCHAR(50) DEFAULT 'Regular'
+    FK  usuario_id          INTEGER UNIQUE NULLABLE
+                            └──> auth_user.id (OneToOne)
+                                ON DELETE: CASCADE
+
+    RELACIONES:
+        └──> OneToMany -> Reserva.cliente
+        └──> OneToOne -> auth_user
+
+    ÍNDICES:
+        - email (para búsqueda)
+        - nombre (para búsqueda)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 3. gestion_cabaña
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idCabaña            INTEGER AUTO_INCREMENT
+        nombre              VARCHAR(100) NOT NULL
+        capacidad           INTEGER NOT NULL
+        estado              VARCHAR(20) NOT NULL
+                            [disponible, ocupada, mantenimiento, reservada]
+        precioNoche         DECIMAL(10,2) NOT NULL
+
+    RELACIONES:
+        └──> OneToMany -> Reserva.cabaña
+        └──> OneToMany -> Mantenimiento.cabaña
+        └──> OneToMany -> ChecklistInventario.cabaña
+
+    ÍNDICES:
+        - estado (para filtros)
+        - nombre (para búsqueda)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 4. gestion_reserva
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idReserva           INTEGER AUTO_INCREMENT
+    FK  cliente_id          INTEGER NOT NULL
+                            └──> gestion_cliente.idCliente
+                                ON DELETE: CASCADE
+    FK  cabaña_id           INTEGER NOT NULL
+                            └──> gestion_cabaña.idCabaña
+                                ON DELETE: CASCADE
+        fechaInicio         DATE NOT NULL
+        fechaFin            DATE NOT NULL
+        numPersonas         INTEGER NOT NULL
+        estado              VARCHAR(20) NOT NULL DEFAULT 'pendiente'
+                            [pendiente, confirmada, cancelada, completada]
+        montoCotizado       DECIMAL(10,2) NOT NULL
+        comentarios         TEXT
+        fechaCreacion       DATETIME NOT NULL (auto_now_add)
+        confirmacion_cliente BOOLEAN DEFAULT False
+        fecha_confirmacion  DATETIME NULLABLE
+
+    RELACIONES:
+        └──> ManyToOne -> Cliente (FK)
+        └──> ManyToOne -> Cabaña (FK)
+        └──> OneToOne -> EntregaCabaña.reserva
+        └──> OneToOne -> Encuesta.reserva
+        └──> OneToMany -> Pago.reserva
+        └──> OneToMany -> PrestamoImplemento.reserva
+
+    ÍNDICES:
+        - estado (para filtros)
+        - fechaInicio (para consultas temporales)
+        - fechaCreacion (ordenamiento)
+        - confirmacion_cliente (para recordatorios)
+        - (cliente_id, fechaInicio) (búsqueda por cliente)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 5. gestion_encuesta
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idEncuesta          INTEGER AUTO_INCREMENT
+    FK  reserva_id          INTEGER UNIQUE NOT NULL
+                            └──> gestion_reserva.idReserva
+                                ON DELETE: CASCADE
+        calificacion        INTEGER NOT NULL
+                            [1, 2, 3, 4, 5]
+        comentarios         TEXT
+        fecha               DATE NOT NULL (auto_now_add)
+
+    RELACIONES:
+        └──> OneToOne -> Reserva (FK)
+
+    ÍNDICES:
+        - calificacion (para reportes)
+        - fecha (para ordenamiento)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 6. gestion_pago
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idPago              INTEGER AUTO_INCREMENT
+    FK  reserva_id          INTEGER NOT NULL
+                            └──> gestion_reserva.idReserva
+                                ON DELETE: CASCADE
+        monto               DECIMAL(10,2) NOT NULL
+        metodo              VARCHAR(20) NOT NULL
+                            [efectivo, transferencia, tarjeta, otro]
+        fechaPago           DATE NOT NULL
+        comprobante         VARCHAR(100) NULLABLE
+                            [path to file]
+
+    RELACIONES:
+        └──> ManyToOne -> Reserva (FK)
+
+    ÍNDICES:
+        - fechaPago (para reportes mensuales)
+        - metodo (para filtros)
+        - reserva_id (búsqueda por reserva)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 7. gestion_implemento
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idImplemento        INTEGER AUTO_INCREMENT
+        nombre              VARCHAR(200) NOT NULL
+        descripcion         TEXT
+        cantidadTotal       INTEGER NOT NULL
+        cantidadDisponible  INTEGER NOT NULL
+        estado              VARCHAR(20) NOT NULL DEFAULT 'disponible'
+                            [disponible, agotado, mantenimiento]
+
+    RELACIONES:
+        └──> OneToMany -> PrestamoImplemento.implemento
+
+    ÍNDICES:
+        - estado (para alertas)
+        - nombre (para búsqueda)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 8. gestion_prestamoimplemento
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idPrestamo          INTEGER AUTO_INCREMENT
+    FK  reserva_id          INTEGER NOT NULL
+                            └──> gestion_reserva.idReserva
+                                ON DELETE: CASCADE
+    FK  implemento_id       INTEGER NOT NULL
+                            └──> gestion_implemento.idImplemento
+                                ON DELETE: CASCADE
+        fechaPrestamo       DATE NOT NULL
+        fechaDevolucion     DATE NULLABLE
+        cantidad            INTEGER NOT NULL
+        devuelto            BOOLEAN DEFAULT False
+
+    RELACIONES:
+        └──> ManyToOne -> Reserva (FK)
+        └──> ManyToOne -> Implemento (FK)
+
+    ÍNDICES:
+        - devuelto (para filtros)
+        - fechaPrestamo (para ordenamiento)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 9. gestion_mantenimiento
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idMantenimiento     INTEGER AUTO_INCREMENT
+    FK  cabaña_id           INTEGER NOT NULL
+                            └──> gestion_cabaña.idCabaña
+                                ON DELETE: CASCADE
+        tipo                VARCHAR(20) NOT NULL
+                            [preventivo, correctivo, limpieza, reparacion]
+        descripcion         TEXT NOT NULL
+        fechaProgramada     DATE NOT NULL
+        fechaEjecucion      DATE NULLABLE
+        estado              VARCHAR(20) NOT NULL DEFAULT 'programado'
+                            [programado, en_proceso, completado, cancelado]
+
+    RELACIONES:
+        └──> ManyToOne -> Cabaña (FK)
+
+    ÍNDICES:
+        - estado (para filtros)
+        - fechaProgramada (para consultas temporales)
+        - cabaña_id (búsqueda por cabaña)
+        - (cabaña_id, fechaProgramada) (verificación de disponibilidad)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 10. gestion_notificacion
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idNotificacion      INTEGER AUTO_INCREMENT
+    FK  usuario_id          INTEGER NULLABLE
+                            └──> auth_user.id
+                                ON DELETE: CASCADE
+        tipo                VARCHAR(20) NOT NULL
+                            [alerta, confirmacion, preparacion, recordatorio, general]
+        mensaje             TEXT NOT NULL
+        fechaEnvio          DATETIME NOT NULL (auto_now_add)
+        leida               BOOLEAN DEFAULT False
+
+    RELACIONES:
+        └──> ManyToOne -> auth_user (FK)
+
+    ÍNDICES:
+        - usuario_id (para notificaciones por usuario)
+        - leida (para filtros)
+        - fechaEnvio (para ordenamiento)
+        - tipo (para filtros)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 11. gestion_checklistinventario (NUEVO)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idChecklist         INTEGER AUTO_INCREMENT
+    FK  cabaña_id           INTEGER NOT NULL
+                            └──> gestion_cabaña.idCabaña
+                                ON DELETE: CASCADE
+        nombre_item         VARCHAR(100) NOT NULL
+        categoria           VARCHAR(50) NOT NULL DEFAULT 'otros'
+                            [cocina, baño, dormitorio, sala, exterior, otros]
+        cantidad_esperada   INTEGER NOT NULL DEFAULT 1
+        es_obligatorio      BOOLEAN DEFAULT True
+        precio_reposicion   DECIMAL(10,2) DEFAULT 0.00
+        orden               INTEGER DEFAULT 0
+
+    RELACIONES:
+        └──> ManyToOne -> Cabaña (FK)
+        └──> OneToMany -> ItemVerificacion.item
+        └──> OneToMany -> ItemFaltante.item_checklist
+
+    ÍNDICES:
+        - cabaña_id (búsqueda por cabaña)
+        - categoria (para agrupación)
+        - (cabaña_id, orden, categoria) (ordenamiento)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 12. gestion_entregacabaña (NUEVO)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idEntrega           INTEGER AUTO_INCREMENT
+    FK  reserva_id          INTEGER UNIQUE NOT NULL
+                            └──> gestion_reserva.idReserva
+                                ON DELETE: CASCADE
+    FK  encargado_entrega_id INTEGER NULLABLE
+                            └──> auth_user.id
+                                ON DELETE: SET_NULL
+        fecha_entrega       DATETIME NULLABLE
+        fecha_devolucion    DATETIME NULLABLE
+        cliente_confirma_entrega    BOOLEAN DEFAULT False
+        cliente_confirma_devolucion BOOLEAN DEFAULT False
+        observaciones_entrega       TEXT
+        observaciones_devolucion    TEXT
+        firma_digital_entrega       VARCHAR(255)
+        firma_digital_devolucion    VARCHAR(255)
+        estado              VARCHAR(20) NOT NULL DEFAULT 'pendiente'
+                            [pendiente, entregada, devuelta, verificada]
+
+    RELACIONES:
+        └──> OneToOne -> Reserva (FK)
+        └──> ManyToOne -> auth_user (FK) [encargado_entrega]
+        └──> OneToMany -> ItemVerificacion.entrega
+        └──> OneToMany -> ItemFaltante.entrega
+
+    ÍNDICES:
+        - reserva_id (UNIQUE)
+        - estado (para filtros)
+        - fecha_entrega (para ordenamiento)
+        - encargado_entrega_id (búsqueda por encargado)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 13. gestion_itemverificacion (NUEVO)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idItemVerificacion  INTEGER AUTO_INCREMENT
+    FK  entrega_id          INTEGER NOT NULL
+                            └──> gestion_entregacabaña.idEntrega
+                                ON DELETE: CASCADE
+    FK  item_id             INTEGER NOT NULL
+                            └──> gestion_checklistinventario.idChecklist
+                                ON DELETE: CASCADE
+        cantidad_entregada  INTEGER DEFAULT 0
+        cantidad_devuelta   INTEGER DEFAULT 0
+        estado_entregado    VARCHAR(20) DEFAULT 'bueno'
+                            [bueno, regular, danado, faltante]
+        estado_devuelto     VARCHAR(20) DEFAULT 'bueno'
+                            [bueno, regular, danado, faltante]
+        requiere_reposicion BOOLEAN DEFAULT False
+        cargo_aplicado      DECIMAL(10,2) DEFAULT 0.00
+        observaciones       TEXT
+
+    RELACIONES:
+        └──> ManyToOne -> EntregaCabaña (FK)
+        └──> ManyToOne -> ChecklistInventario (FK)
+
+    ÍNDICES:
+        - entrega_id (búsqueda por entrega)
+        - item_id (búsqueda por item)
+        - estado_devuelto (para reportes)
+        - requiere_reposicion (para alertas)
+        - (entrega_id, item_id) (unicidad implícita)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 14. gestion_itemfaltante (LEGACY - Compatibilidad)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  idItemFaltante      INTEGER AUTO_INCREMENT
+    FK  entrega_id          INTEGER NOT NULL
+                            └──> gestion_entregacabaña.idEntrega
+                                ON DELETE: CASCADE
+    FK  item_checklist_id   INTEGER NOT NULL
+                            └──> gestion_checklistinventario.idChecklist
+                                ON DELETE: CASCADE
+        cantidad_faltante   INTEGER DEFAULT 1
+        observaciones       TEXT
+
+    RELACIONES:
+        └──> ManyToOne -> EntregaCabaña (FK)
+        └──> ManyToOne -> ChecklistInventario (FK)
+
+    NOTA: Este modelo es legacy. Usar ItemVerificacion en su lugar.
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 15. auth_group (Django - Grupos de Usuarios)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  id                  INTEGER AUTO_INCREMENT
+        name                VARCHAR(150) UNIQUE NOT NULL
+
+    GRUPOS DEL SISTEMA:
+        - "Encargados"      (usuarios con permisos de encargado)
+        - (sin grupos para clientes - uso de Cliente.usuario)
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+ 16. auth_user_groups (Django - Relación ManyToMany Usuario-Grupos)
+═══════════════════════════════════════════════════════════════════════════════════════
+
+    PK  id                  INTEGER AUTO_INCREMENT
+    FK  user_id             INTEGER NOT NULL
+                            └──> auth_user.id
+    FK  group_id            INTEGER NOT NULL
+                            └──> auth_group.id
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              DIAGRAMA DE RELACIONES                                  │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+auth_user
+    │
+    ├─── OneToOne ──────> Cliente
+    │                         │
+    │                         └─── OneToMany ────> Reserva
+    │                                                  │
+    │                                                  ├─── OneToOne ───> EntregaCabaña
+    │                                                  │                      │
+    │                                                  │                      ├─── OneToMany ───> ItemVerificacion
+    │                                                  │                      │                         │
+    │                                                  │                      │                         └─── ManyToOne ───> ChecklistInventario
+    │                                                  │                      │
+    │                                                  │                      └─── OneToMany ───> ItemFaltante
+    │                                                  │
+    │                                                  ├─── OneToOne ───> Encuesta
+    │                                                  │
+    │                                                  └─── OneToMany ───> Pago
+    │                                                  │
+    │                                                  └─── OneToMany ───> PrestamoImplemento
+    │                                                                      │
+    │                                                                      └─── ManyToOne ───> Implemento
+    │
+    ├─── OneToMany ──────> Notificacion
+    │
+    └─── OneToMany ──────> EntregaCabaña (como encargado_entrega)
+
+
+Cabaña
+    │
+    ├─── OneToMany ────> Reserva
+    │
+    ├─── OneToMany ────> Mantenimiento
+    │
+    └─── OneToMany ────> ChecklistInventario
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              FLUJOS DE DATOS PRINCIPALES                             │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+FLUJO 1: PROCESO DE RESERVA
+─────────────────────────────────────────────────────────────────────────────────────
+1. Cliente solicita reserva
+   └──> Reserva (estado: 'pendiente')
+        └──> Cliente.confirmacion_cliente = False
+
+2. Administrador aprueba reserva
+   └──> Reserva.estado = 'confirmada'
+        └──> Se genera alerta a 7 días
+
+3. Cliente confirma (4 días antes)
+   └──> Reserva.confirmacion_cliente = True
+        └──> Reserva.fecha_confirmacion = now()
+        └──> Se crea EntregaCabaña automáticamente
+        └──> Se genera ChecklistInventario para la cabaña
+        └──> Se notifica al encargado
+
+
+FLUJO 2: PROCESO DE ENTREGA (CHECK-IN)
+─────────────────────────────────────────────────────────────────────────────────────
+1. Encargado completa checklist de entrega
+   └──> EntregaCabaña.estado = 'entregada'
+        └──> EntregaCabaña.fecha_entrega = now()
+        └──> EntregaCabaña.encargado_entrega = encargado
+        └──> Se crean ItemVerificacion por cada item del checklist
+             └──> ItemVerificacion.cantidad_entregada = cantidad_esperada
+             └──> ItemVerificacion.estado_entregado = 'bueno' (default)
+
+2. Cliente confirma recepción
+   └──> EntregaCabaña.cliente_confirma_entrega = True
+        └──> EntregaCabaña.firma_digital_entrega = hash generado
+
+
+FLUJO 3: PROCESO DE DEVOLUCIÓN (CHECK-OUT)
+─────────────────────────────────────────────────────────────────────────────────────
+1. Encargado verifica devolución
+   └──> EntregaCabaña.estado = 'verificada'
+        └──> EntregaCabaña.fecha_devolucion = now()
+        └──> Se actualizan ItemVerificacion:
+             └──> ItemVerificacion.cantidad_devuelta = cantidad verificada
+             └──> ItemVerificacion.estado_devuelto = estado verificado
+             └──> ItemVerificacion.calcular_cargo() se ejecuta automáticamente
+                  └──> Calcula cargo por faltantes (100% del precio)
+                  └──> Calcula cargo por daños (50% del precio)
+                  └──> Calcula cargo por estado regular (20% del precio)
+
+2. Cargos se aplican automáticamente
+   └──> Total cargos = sum(ItemVerificacion.cargo_aplicado)
+
+
+FLUJO 4: GESTIÓN DE MANTENIMIENTO
+─────────────────────────────────────────────────────────────────────────────────────
+1. Encargado programa mantenimiento
+   └──> Mantenimiento (estado: 'programado')
+        └──> Cabaña.estado = 'mantenimiento'
+
+2. Sistema previene reservas en fechas de mantenimiento
+   └──> Reserva.verificar_disponibilidad_cabaña() verifica mantenimientos
+
+3. Mantenimiento completado
+   └──> Mantenimiento.estado = 'completado'
+        └──> Cabaña.estado = 'disponible'
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              RESTRICCIONES DE INTEGRIDAD                             │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+1. Una Reserva solo puede tener UNA EntregaCabaña (OneToOne)
+2. Una Reserva solo puede tener UNA Encuesta (OneToOne)
+3. Un Cliente está vinculado a UN auth_user (OneToOne)
+4. Una EntregaCabaña tiene MÚLTIPLES ItemVerificacion (OneToMany)
+5. Una Cabaña tiene MÚLTIPLES ChecklistInventario (OneToMany)
+6. Una Reserva puede tener MÚLTIPLES Pagos (OneToMany)
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              ÍNDICES RECOMENDADOS                                    │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+TABLA: gestion_reserva
+    - idx_reserva_cliente_fecha: (cliente_id, fechaInicio)
+    - idx_reserva_estado: (estado)
+    - idx_reserva_fecha_confirmacion: (fechaInicio, confirmacion_cliente)
+
+TABLA: gestion_entregacabaña
+    - idx_entrega_reserva: (reserva_id) UNIQUE
+    - idx_entrega_estado: (estado)
+    - idx_entrega_fecha: (fecha_entrega)
+
+TABLA: gestion_mantenimiento
+    - idx_mantenimiento_cabaña_fecha: (cabaña_id, fechaProgramada)
+    - idx_mantenimiento_estado: (estado)
+
+TABLA: gestion_itemverificacion
+    - idx_item_ver_entrega: (entrega_id)
+    - idx_item_ver_reposicion: (requiere_reposicion)
+
+TABLA: gestion_notificacion
+    - idx_notif_usuario_leida: (usuario_id, leida)
+    - idx_notif_fecha: (fechaEnvio)
+
+
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                              ESTADÍSTICAS Y REPORTES                                 │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+
+QUERIES PRINCIPALES PARA REPORTES:
+─────────────────────────────────────────────────────────────────────────────────────
+
+1. Ocupación por mes:
+   SELECT MONTH(fechaInicio), COUNT(*)
+   FROM gestion_reserva
+   WHERE estado = 'confirmada'
+   GROUP BY MONTH(fechaInicio)
+
+2. Ingresos por mes:
+   SELECT MONTH(fechaPago), SUM(monto)
+   FROM gestion_pago
+   GROUP BY MONTH(fechaPago)
+
+3. Items más dañados:
+   SELECT item__nombre_item, COUNT(*), SUM(cargo_aplicado)
+   FROM gestion_itemverificacion
+   WHERE estado_devuelto = 'danado'
+   GROUP BY item_id
+
+4. Tasa de confirmación:
+   SELECT
+     COUNT(*) FILTER (WHERE confirmacion_cliente = True) * 100.0 / COUNT(*) as tasa
+   FROM gestion_reserva
+   WHERE estado = 'confirmada'
+
+5. Cargos por período:
+   SELECT SUM(cargo_aplicado)
+   FROM gestion_itemverificacion
+   WHERE entrega__fecha_devolucion BETWEEN ? AND ?
+
+
+═══════════════════════════════════════════════════════════════════════════════════════
+                          FIN DEL DIAGRAMA DE BASE DE DATOS
+═══════════════════════════════════════════════════════════════════════════════════════
+

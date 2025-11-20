@@ -71,8 +71,93 @@
     {% endif %}
 </div>
 
+<div class="card alert alert-warning" style="border-left: 4px solid #ff9800;">
+    <h3>Confirmaciones Pendientes de Clientes</h3>
+    {% if confirmaciones_pendientes %}
+        <p>Las siguientes reservas han sido confirmadas por el administrador pero aún no han sido confirmadas por los clientes (4 días antes).</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Reserva</th>
+                    <th>Cliente</th>
+                    <th>Cabaña</th>
+                    <th>Fecha Inicio</th>
+                    <th>Días Restantes</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in confirmaciones_pendientes %}
+                <tr>
+                    <td>#{{ reserva.idReserva }}</td>
+                    <td>{{ reserva.cliente.nombre }}</td>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }}</td>
+                    <td>
+                        {{ reserva.fechaInicio|timesince }}
+                    </td>
+                    <td>
+                        <span class="badge badge-warning">Pendiente Confirmación Cliente</span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay confirmaciones pendientes de clientes.</p>
+    {% endif %}
+</div>
+
 <div class="card">
-    <h3>Reservas Próximas (Preparación)</h3>
+    <h3>Reservas Urgentes - Preparación Inmediata (Hoy/Mañana)</h3>
+    {% if reservas_urgentes %}
+        <p class="alert alert-danger">Estas reservas requieren preparación urgente.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Cabaña</th>
+                    <th>Fecha Inicio</th>
+                    <th>Confirmación Cliente</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for reserva in reservas_urgentes %}
+                <tr>
+                    <td>{{ reserva.cliente.nombre }}</td>
+                    <td>{{ reserva.cabaña.nombre }}</td>
+                    <td>{{ reserva.fechaInicio }}</td>
+                    <td>
+                        {% if reserva.confirmacion_cliente %}
+                            <span class="badge badge-success">✓ Confirmada</span>
+                        {% else %}
+                            <span class="badge badge-danger">⚠ No Confirmada</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if reserva.confirmacion_cliente %}
+                            <form method="post" action="{% url 'preparar_cabañas' %}" class="inline-form">
+                                {% csrf_token %}
+                                <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
+                                <button type="submit" class="btn btn-primary">Marcar Preparada</button>
+                            </form>
+                            <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success">Ver Checklist</a>
+                        {% else %}
+                            <span class="error-text">Esperando confirmación del cliente</span>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay reservas urgentes en este momento.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Reservas Próximas - Preparación (Próximos 3 días)</h3>
     {% if reservas_proximas %}
         <table>
             <thead>
@@ -80,6 +165,7 @@
                     <th>Cliente</th>
                     <th>Cabaña</th>
                     <th>Fecha Inicio</th>
+                    <th>Confirmación Cliente</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
@@ -90,11 +176,18 @@
                     <td>{{ reserva.cabaña.nombre }}</td>
                     <td>{{ reserva.fechaInicio }}</td>
                     <td>
-                        <form method="post" action="{% url 'preparar_cabañas' %}" class="inline-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
-                            <button type="submit" class="btn btn-primary">Enviar Notificación</button>
-                        </form>
+                        {% if reserva.confirmacion_cliente %}
+                            <span class="badge badge-success">✓ Confirmada</span>
+                        {% else %}
+                            <span class="badge badge-warning">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if reserva.confirmacion_cliente %}
+                            <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-primary">Ver Checklist</a>
+                        {% else %}
+                            <span class="info-text">Esperando confirmación del cliente</span>
+                        {% endif %}
                     </td>
                 </tr>
                 {% endfor %}

@@ -36,8 +36,13 @@
     <a href="{% url 'portal_cliente' %}" class="btn">Cancelar</a>
 </form>
 
-<div class="card" class="mt-30">
+<div class="card mt-30">
     <h3>Cabañas Disponibles</h3>
+    {% if cabañas %}
+    <div class="alert alert-info">
+        <p><strong>Nota:</strong> Las cabañas en mantenimiento no aparecen en esta lista.
+        Si su cabaña preferida no está disponible, seleccione una alternativa o contacte al administrador.</p>
+    </div>
     <table>
         <thead>
             <tr>
@@ -45,6 +50,7 @@
                 <th>Capacidad</th>
                 <th>Precio por Noche</th>
                 <th>Estado</th>
+                <th>Mantenimiento</th>
             </tr>
         </thead>
         <tbody>
@@ -53,11 +59,27 @@
                 <td>{{ cabaña.nombre }}</td>
                 <td>{{ cabaña.capacidad }} personas</td>
                 <td>${{ cabaña.precioNoche }}</td>
-                <td>{{ cabaña.get_estado_display }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ cabaña.estado }}">
+                        {{ cabaña.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if cabaña.estado == 'mantenimiento' %}
+                        <span class="error-text">⚠️ En Mantenimiento</span>
+                    {% else %}
+                        <span class="success-text">✓ Disponible</span>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% else %}
+    <div class="alert alert-warning">
+        <p>No hay cabañas disponibles en este momento. Por favor contacte al administrador para más información.</p>
+    </div>
+    {% endif %}
 </div>
 {% endblock %}
 

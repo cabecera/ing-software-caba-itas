@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+
+{% block title %}Confirmar Reserva - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Confirmar Reserva</h1>
+
+<div class="card">
+    <h3>Detalles de la Reserva</h3>
+
+    <div class="info-group">
+        <p><strong>Número de Reserva:</strong> #{{ reserva.idReserva }}</p>
+        <p><strong>Cabaña:</strong> {{ reserva.cabaña.nombre }}</p>
+        <p><strong>Fecha de Inicio:</strong> {{ reserva.fechaInicio }}</p>
+        <p><strong>Fecha de Fin:</strong> {{ reserva.fechaFin }}</p>
+        <p><strong>Número de Personas:</strong> {{ reserva.numPersonas }}</p>
+        <p><strong>Monto Total:</strong> ${{ reserva.montoCotizado }}</p>
+        <p><strong>Días Restantes:</strong> {{ dias_restantes }} día(s)</p>
+    </div>
+
+    {% if reserva.entrega and reserva.entrega.items_verificacion.exists %}
+    <div class="card mt-30">
+        <h3>Checklist de Inventario</h3>
+        <p class="alert alert-info">El encargado ha completado el checklist de inventario. Revise los items que recibirá:</p>
+
+        {% regroup reserva.entrega.items_verificacion.all|dictsort:"item.categoria" by item.get_categoria_display as items_por_categoria %}
+
+        {% for categoria in items_por_categoria %}
+        <div class="checklist-categoria">
+            <h4>{{ categoria.grouper|upper }}</h4>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Item</th>
+                    <th>Cantidad</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_ver in categoria.list %}
+                <tr class="item-{{ item_ver.estado_entregado }}">
+                    <td>
+                        <strong>{{ item_ver.item.nombre_item }}</strong>
+                        {% if item_ver.item.es_obligatorio %}
+                        <span class="badge badge-warning">Obligatorio</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ item_ver.cantidad_entregada }}</td>
+                    <td>
+                        <span class="status-badge-inline status-{{ item_ver.estado_entregado }}">
+                            {{ item_ver.get_estado_entregado_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% endfor %}
+
+        {% if reserva.entrega.observaciones_entrega %}
+        <div class="alert alert-info mt-30">
+            <p><strong>Observaciones del Encargado:</strong></p>
+            <p>{{ reserva.entrega.observaciones_entrega }}</p>
+        </div>
+        {% endif %}
+    </div>
+    {% endif %}
+
+    {% if dias_restantes <= 4 %}
+    <div class="alert alert-warning">
+        <h4>Importante</h4>
+        <p>Confirme su reserva para que podamos preparar la cabaña adecuadamente. La confirmación debe realizarse 4 días antes de la fecha de inicio.</p>
+        <br>
+        <h4>Política de Cancelación:</h4>
+        <ul>
+            <li>Cancelación con más de 7 días de anticipación: Sin cargo</li>
+            <li>Cancelación entre 4-7 días: 30% del monto total</li>
+            <li>Cancelación con menos de 4 días: 50% del monto total</li>
+        </ul>
+    </div>
+
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-actions">
+            <button type="submit" name="accion" value="confirmar" class="btn btn-success">
+                Confirmar Reserva
+            </button>
+            <button type="submit" name="accion" value="cancelar" class="btn btn-danger">
+                Cancelar (Contactar Administrador)
+            </button>
+            <a href="{% url 'mis_reservas' %}" class="btn">Volver</a>
+        </div>
+    </form>
+    {% else %}
+    <div class="alert alert-info">
+        <p>La confirmación de reserva estará disponible cuando falten 4 días o menos para la fecha de inicio.</p>
+        <a href="{% url 'mis_reservas' %}" class="btn">Volver a Mis Reservas</a>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+

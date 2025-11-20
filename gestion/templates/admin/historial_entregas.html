@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}Historial de Entregas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Historial de Entregas</h1>
+
+<div class="stats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px;">
+    <div class="stat-card">
+        <h4>{{ total_entregas }}</h4>
+        <p>Total Entregas</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ entregas_completadas }}</h4>
+        <p>Verificaciones Completadas</p>
+    </div>
+    <div class="stat-card">
+        <h4>${{ total_cargos|floatformat:2 }}</h4>
+        <p>Total Cargos Aplicados</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Filtros</h3>
+    <form method="get" style="display: flex; gap: 10px; align-items: center;">
+        <label for="estado">Estado:</label>
+        <select name="estado" id="estado" class="form-control" style="width: auto;">
+            <option value="">Todos</option>
+            <option value="pendiente" {% if estado_filtro == 'pendiente' %}selected{% endif %}>Pendiente</option>
+            <option value="entregada" {% if estado_filtro == 'entregada' %}selected{% endif %}>Entregada</option>
+            <option value="devuelta" {% if estado_filtro == 'devuelta' %}selected{% endif %}>Devuelta</option>
+            <option value="verificada" {% if estado_filtro == 'verificada' %}selected{% endif %}>Verificada</option>
+        </select>
+        <button type="submit" class="btn btn-primary">Filtrar</button>
+        <a href="{% url 'historial_entregas' %}" class="btn">Limpiar</a>
+    </form>
+</div>
+
+<div class="card">
+    <h3>Items Más Frecuentemente Dañados</h3>
+    {% if items_danados %}
+    <table>
+        <thead>
+            <tr>
+                <th>Item</th>
+                <th>Veces Dañado</th>
+                <th>Cargo Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items_danados %}
+            <tr>
+                <td>{{ item.item__nombre_item }}</td>
+                <td>{{ item.veces_danado }}</td>
+                <td>${{ item.cargo_total|floatformat:2 }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No hay registros de items dañados.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Entregas Registradas</h3>
+    {% if entregas_con_cargos %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Reserva</th>
+                <th>Cliente</th>
+                <th>Cabaña</th>
+                <th>Fecha Entrega</th>
+                <th>Fecha Devolución</th>
+                <th>Estado</th>
+                <th>Cargos</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for entrega, cargo_entrega in entregas_con_cargos %}
+            <tr>
+                <td>#{{ entrega.idEntrega }}</td>
+                <td>#{{ entrega.reserva.idReserva }}</td>
+                <td>{{ entrega.reserva.cliente.nombre }}</td>
+                <td>{{ entrega.reserva.cabaña.nombre }}</td>
+                <td>{{ entrega.fecha_entrega|date:"d/m/Y H:i"|default:"-" }}</td>
+                <td>{{ entrega.fecha_devolucion|date:"d/m/Y H:i"|default:"-" }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ entrega.estado }}">
+                        {{ entrega.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    {% if entrega.estado == 'verificada' %}
+                        ${{ cargo_entrega|floatformat:2 }}
+                    {% else %}
+                        -
+                    {% endif %}
+                </td>
+                <td>
+                    {% if entrega.estado == 'entregada' or entrega.estado == 'pendiente' %}
+                        <a href="{% url 'checklist_entrega_encargado' entrega.reserva.idReserva %}" class="btn btn-primary btn-sm">Ver Checklist</a>
+                    {% elif entrega.estado == 'devuelta' %}
+                        <a href="{% url 'verificacion_devolucion' entrega.reserva.idReserva %}" class="btn btn-success btn-sm">Verificar</a>
+                    {% else %}
+                        <span class="success-text">Completada</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>No hay entregas registradas.</p>
+    {% endif %}
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

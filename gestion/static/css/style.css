@@ -451,6 +451,153 @@ table tr:hover {
     color: #666;
 }
 
+/* Estilos para estados de items del checklist */
+.item-bueno {
+    background: #d4edda;
+    border-left: 4px solid #4CAF50;
+    padding: 10px;
+    margin: 5px 0;
+}
+
+.item-danado {
+    background: #fff3cd;
+    border-left: 4px solid #FF9800;
+    padding: 10px;
+    margin: 5px 0;
+}
+
+.item-faltante {
+    background: #f8d7da;
+    border-left: 4px solid #f44336;
+    padding: 10px;
+    margin: 5px 0;
+}
+
+.item-regular {
+    background: #e3f2fd;
+    border-left: 4px solid #2196F3;
+    padding: 10px;
+    margin: 5px 0;
+}
+
+.checklist-item {
+    padding: 15px;
+    margin: 10px 0;
+    border: 2px solid #8B7355;
+    background: rgba(255, 255, 255, 0.8);
+}
+
+.checklist-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.checklist-categoria {
+    font-weight: bold;
+    color: #8B7355;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    padding: 10px;
+    background: rgba(139, 115, 85, 0.1);
+    border-left: 4px solid #8B7355;
+}
+
+.badge {
+    padding: 5px 10px;
+    border-radius: 0;
+    font-size: 0.85em;
+    display: inline-block;
+    margin-left: 10px;
+}
+
+.badge-warning {
+    background: #FF9800;
+    color: white;
+}
+
+.badge-success {
+    background: #4CAF50;
+    color: white;
+}
+
+.badge-danger {
+    background: #f44336;
+    color: white;
+}
+
+.badge-info {
+    background: #2196F3;
+    color: white;
+}
+
+.info-group {
+    margin: 15px 0;
+}
+
+.info-group p {
+    margin: 8px 0;
+}
+
+.alert {
+    padding: 15px;
+    margin: 15px 0;
+    border: 2px solid;
+    border-left: 4px solid;
+}
+
+.alert-warning {
+    background: #fff3cd;
+    border-color: #FF9800;
+    color: #856404;
+}
+
+.alert-success {
+    background: #d4edda;
+    border-color: #4CAF50;
+    color: #155724;
+}
+
+.alert-info {
+    background: #d1ecf1;
+    border-color: #2196F3;
+    color: #0c5460;
+}
+
+.alert-danger {
+    background: #f8d7da;
+    border-color: #f44336;
+    color: #721c24;
+}
+
+.success-text {
+    color: #4CAF50;
+}
+
+.info-text {
+    color: #2196F3;
+}
+
+.form-actions {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.form-control {
+    width: 100%;
+    padding: 8px;
+    border: 2px solid #8B7355;
+    font-size: 14px;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: #6B5A47;
+}
+
 @media (max-width: 768px) {
     .nav-links {
         flex-direction: column;
@@ -463,6 +610,19 @@ table tr:hover {
 
     .content {
         padding: 15px;
+    }
+
+    .checklist-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+
+    .form-actions .btn {
+        width: 100%;
     }
 }
 
