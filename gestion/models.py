@@ -554,3 +554,83 @@ class ItemFaltante(models.Model):
         verbose_name_plural = "Items Faltantes"
         ordering = ['entrega', 'item_checklist']
 
+
+class TareaPreparacion(models.Model):
+    """Modelo para tareas estándar de preparación de cabañas"""
+    CATEGORIAS = [
+        ('limpieza', 'Limpieza'),
+        ('inventario', 'Inventario y Suministros'),
+        ('mantenimiento', 'Mantenimiento Preventivo'),
+        ('exteriores', 'Áreas Exteriores'),
+        ('seguridad', 'Seguridad'),
+    ]
+
+    idTareaPreparacion = models.AutoField(primary_key=True)
+    categoria = models.CharField(max_length=20, choices=CATEGORIAS, verbose_name='Categoría')
+    nombre = models.CharField(max_length=200, verbose_name='Nombre de la Tarea')
+    descripcion = models.TextField(blank=True, verbose_name='Descripción')
+    es_obligatoria = models.BooleanField(default=True, verbose_name='Es Obligatoria')
+    orden = models.IntegerField(default=0, verbose_name='Orden')
+
+    def __str__(self):
+        return f"{self.get_categoria_display()} - {self.nombre}"
+
+    class Meta:
+        verbose_name = "Tarea de Preparación"
+        verbose_name_plural = "Tareas de Preparación"
+        ordering = ['categoria', 'orden', 'nombre']
+
+
+class PreparacionCabaña(models.Model):
+    """Modelo para registro de preparación de cabañas para reservas"""
+    ESTADOS = [
+        ('pendiente', 'Pendiente'),
+        ('en_proceso', 'En Proceso'),
+        ('completada', 'Completada'),
+        ('problemas', 'Con Problemas'),
+    ]
+
+    idPreparacion = models.AutoField(primary_key=True)
+    reserva = models.OneToOneField(Reserva, on_delete=models.CASCADE, related_name='preparacion')
+    encargado = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='preparaciones_asignadas', verbose_name='Encargado')
+    fecha_inicio = models.DateTimeField(auto_now_add=True, verbose_name='Fecha Inicio')
+    fecha_completacion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Completación')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente', verbose_name='Estado')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+
+    def porcentaje_completado(self):
+        """Calcula el porcentaje de tareas completadas"""
+        total = self.items_preparacion.count()
+        if total == 0:
+            return 0
+        completadas = self.items_preparacion.filter(completado=True).count()
+        return int((completadas / total) * 100)
+
+    def __str__(self):
+        return f"Preparación #{self.idPreparacion} - {self.reserva.cabaña.nombre} - Reserva #{self.reserva.idReserva}"
+
+    class Meta:
+        verbose_name = "Preparación de Cabaña"
+        verbose_name_plural = "Preparaciones de Cabañas"
+        ordering = ['-fecha_inicio']
+
+
+class ItemPreparacionCompletado(models.Model):
+    """Modelo para registro de tareas de preparación completadas"""
+    idItemPreparacion = models.AutoField(primary_key=True)
+    preparacion = models.ForeignKey(PreparacionCabaña, on_delete=models.CASCADE, related_name='items_preparacion')
+    tarea = models.ForeignKey(TareaPreparacion, on_delete=models.CASCADE, related_name='completados')
+    completado = models.BooleanField(default=False, verbose_name='Completado')
+    fecha_completado = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Completado')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+
+    def __str__(self):
+        return f"{self.tarea.nombre} - {'✓' if self.completado else '✗'}"
+
+    class Meta:
+        verbose_name = "Item de Preparación"
+        verbose_name_plural = "Items de Preparación"
+        unique_together = ['preparacion', 'tarea']
+        ordering = ['tarea__categoria', 'tarea__orden']
+

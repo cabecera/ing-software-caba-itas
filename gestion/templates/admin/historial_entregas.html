@@ -101,12 +101,18 @@
                     {% endif %}
                 </td>
                 <td>
-                    {% if entrega.estado == 'entregada' or entrega.estado == 'pendiente' %}
+                    {% if entrega.estado == 'pendiente' %}
                         <a href="{% url 'checklist_entrega_encargado' entrega.reserva.idReserva %}" class="btn btn-primary btn-sm">Ver Checklist</a>
+                    {% elif entrega.estado == 'entregada' %}
+                        <span class="badge badge-success">✓ Checklist Listo</span>
+                        <br><small class="text-muted">Completado: {{ entrega.fecha_entrega|date:"d/m/Y H:i"|default:"-" }}</small>
                     {% elif entrega.estado == 'devuelta' %}
-                        <a href="{% url 'verificacion_devolucion' entrega.reserva.idReserva %}" class="btn btn-success btn-sm">Verificar</a>
+                        <a href="{% url 'verificacion_devolucion' entrega.reserva.idReserva %}" class="btn btn-success btn-sm">Verificar Devolución</a>
+                    {% elif entrega.estado == 'verificada' %}
+                        <span class="badge badge-success">✓ Verificado</span>
+                        <br><small class="text-muted">Completado: {{ entrega.fecha_devolucion|date:"d/m/Y H:i"|default:"-" }}</small>
                     {% else %}
-                        <span class="success-text">Completada</span>
+                        <span class="badge badge-secondary">Pendiente</span>
                     {% endif %}
                 </td>
             </tr>

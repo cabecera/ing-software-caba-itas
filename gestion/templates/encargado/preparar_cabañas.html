@@ -3,45 +3,88 @@
 {% block title %}Preparar Cabañas - Las Cabañitas{% endblock %}
 
 {% block content %}
-<h1 class="page-title">Preparar Cabañas para Reservas Próximas</h1>
+<h1 class="page-title">Preparar Cabañas</h1>
 
 <div class="card">
-    <h3>Reservas que Requieren Preparación</h3>
+    <h3>Reservas Próximas (Próximos 3 días)</h3>
+    <p class="alert alert-info">Las siguientes reservas requieren preparación. Haz clic en "Iniciar Preparación" para comenzar el checklist de preparación.</p>
+
     {% if reservas_proximas %}
-        <table>
-            <thead>
-                <tr>
-                    <th>ID Reserva</th>
-                    <th>Cliente</th>
-                    <th>Cabaña</th>
-                    <th>Fecha Inicio</th>
-                    <th>Fecha Fin</th>
-                    <th>Personas</th>
-                    <th>Acciones</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for reserva in reservas_proximas %}
-                <tr>
-                    <td>#{{ reserva.idReserva }}</td>
-                    <td>{{ reserva.cliente.nombre }}</td>
-                    <td>{{ reserva.cabaña.nombre }}</td>
-                    <td>{{ reserva.fechaInicio }}</td>
-                    <td>{{ reserva.fechaFin }}</td>
-                    <td>{{ reserva.numPersonas }}</td>
-                    <td>
-                        <form method="post" class="inline-form">
-                            {% csrf_token %}
-                            <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
-                            <button type="submit" class="btn btn-primary">Enviar Notificación de Preparación</button>
-                        </form>
-                    </td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+    <table>
+        <thead>
+            <tr>
+                <th>Cliente</th>
+                <th>Cabaña</th>
+                <th>Fecha Inicio</th>
+                <th>Días Restantes</th>
+                <th>Estado Preparación</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for reserva in reservas_proximas %}
+            <tr>
+                <td>{{ reserva.cliente.nombre }}</td>
+                <td>{{ reserva.cabaña.nombre }}</td>
+                <td>{{ reserva.fechaInicio }}</td>
+                <td>
+                    {% if reserva.fechaInicio >= hoy %}
+                        <span class="badge badge-info">{{ reserva.fechaInicio|timesince:hoy }} restante{{ reserva.fechaInicio|timesince:hoy|pluralize }}</span>
+                    {% else %}
+                        <span class="badge badge-danger">Ya inició</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% for prep_id, preparacion in preparaciones.items %}
+                        {% if prep_id == reserva.idReserva %}
+                        <span class="status-badge-inline status-{{ preparacion.estado }}">
+                            {{ preparacion.get_estado_display }}
+                        </span>
+                        <br><small>Progreso: {{ preparacion.porcentaje_completado }}%</small>
+                        {% endif %}
+                    {% empty %}
+                        <span class="badge badge-secondary">No iniciada</span>
+                    {% endfor %}
+                    {% if not preparaciones %}
+                        <span class="badge badge-secondary">No iniciada</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <a href="{% url 'preparacion_cabaña' reserva.idReserva %}" class="btn btn-primary btn-sm">
+                        {% for prep_id, preparacion in preparaciones.items %}
+                            {% if prep_id == reserva.idReserva %}
+                                Continuar Preparación
+                            {% endif %}
+                        {% empty %}
+                            Iniciar Preparación
+                        {% endfor %}
+                        {% if not preparaciones %}
+                            Iniciar Preparación
+                        {% endif %}
+                    </a>
+                    {% for prep_id, preparacion in preparaciones.items %}
+                        {% if prep_id == reserva.idReserva and preparacion.estado == 'completada' %}
+                            {% if reserva.entrega %}
+                                {% if reserva.entrega.estado == 'entregada' or reserva.entrega.estado == 'verificada' %}
+                                    <span class="badge badge-success">✓ Checklist Listo</span>
+                                    {% if reserva.entrega.fecha_entrega %}
+                                    <br><small class="text-muted">Completado: {{ reserva.entrega.fecha_entrega|date:"d/m/Y H:i" }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success btn-sm">Ver Checklist Entrega</a>
+                                {% endif %}
+                            {% else %}
+                                <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success btn-sm">Ver Checklist Entrega</a>
+                            {% endif %}
+                        {% endif %}
+                    {% endfor %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
     {% else %}
-        <p>No hay reservas próximas que requieran preparación.</p>
+    <p class="alert alert-success">No hay reservas próximas que requieran preparación en los próximos 3 días.</p>
     {% endif %}
 </div>
 
@@ -49,4 +92,3 @@
     <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
 </div>
 {% endblock %}
-

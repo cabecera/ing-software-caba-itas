@@ -1,6 +1,7 @@
 from functools import wraps
 from django.shortcuts import redirect
 from django.contrib import messages
+from .models import Cliente
 
 
 def cliente_required(view_func):
@@ -9,8 +10,14 @@ def cliente_required(view_func):
     def _wrapped_view(request, *args, **kwargs):
         if not request.user.is_authenticated:
             return redirect('login')
-        if not hasattr(request.user, 'cliente'):
-            messages.error(request, 'Acceso denegado. Debe ser un cliente registrado.')
+        # Verificar si existe el objeto Cliente asociado
+        try:
+            cliente = request.user.cliente
+        except Cliente.DoesNotExist:
+            messages.error(request, 'Acceso denegado. Debe ser un cliente registrado. Contacte al administrador.')
+            # Redirigir a logout para evitar loop
+            from django.contrib.auth import logout
+            logout(request)
             return redirect('login')
         return view_func(request, *args, **kwargs)
     return _wrapped_view

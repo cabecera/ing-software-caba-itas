@@ -61,10 +61,10 @@
                     </td>
                     <td>
                         <select name="estado_{{ item_ver.idItemVerificacion }}" class="form-control">
-                            <option value="bueno" {% if item_ver.estado_entregado == 'bueno' %}selected{% endif %}>✅ Buen Estado</option>
-                            <option value="regular" {% if item_ver.estado_entregado == 'regular' %}selected{% endif %}>⚠️ Estado Regular</option>
-                            <option value="danado" {% if item_ver.estado_entregado == 'danado' %}selected{% endif %}>⚠️ Dañado</option>
-                            <option value="faltante" {% if item_ver.estado_entregado == 'faltante' %}selected{% endif %}>❌ Faltante</option>
+                            <option value="bueno" {% if item_ver.estado_entregado == 'bueno' %}selected{% endif %}>Buen Estado</option>
+                            <option value="regular" {% if item_ver.estado_entregado == 'regular' %}selected{% endif %}>Estado Regular</option>
+                            <option value="danado" {% if item_ver.estado_entregado == 'danado' %}selected{% endif %}>Dañado</option>
+                            <option value="faltante" {% if item_ver.estado_entregado == 'faltante' %}selected{% endif %}>Falta</option>
                         </select>
                     </td>
                     <td>

@@ -9,7 +9,8 @@ from datetime import timedelta, date
 from .models import (
     Cliente, Reserva, Cabaña, Encuesta, Pago,
     Implemento, PrestamoImplemento, Mantenimiento, Notificacion,
-    ChecklistInventario, EntregaCabaña, ItemFaltante, ItemVerificacion
+    ChecklistInventario, EntregaCabaña, ItemFaltante, ItemVerificacion,
+    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado
 )
 from .forms import (
     RegistroClienteForm, ReservaForm, EncuestaForm, PagoForm,
@@ -21,7 +22,23 @@ from .decorators import cliente_required, administrador_required, encargado_requ
 def login_view(request):
     """Vista de login"""
     if request.user.is_authenticated:
-        return redirect('dashboard')
+        # Redirigir según rol sin pasar por dashboard para evitar loops
+        try:
+            if request.user.cliente:
+                return redirect('portal_cliente')
+        except Cliente.DoesNotExist:
+            pass
+
+        if request.user.is_staff:
+            return redirect('dashboard_admin')
+        elif request.user.groups.filter(name='Encargados').exists():
+            return redirect('dashboard_encargado')
+        else:
+            # Usuario sin rol, hacer logout y mostrar mensaje
+            from django.contrib.auth import logout
+            logout(request)
+            messages.error(request, 'No tiene un rol asignado. Contacte al administrador.')
+            return render(request, 'login.html')
 
     if request.method == 'POST':
         username = request.POST.get('username')
@@ -29,7 +46,21 @@ def login_view(request):
         user = authenticate(request, username=username, password=password)
         if user:
             login(request, user)
-            return redirect('dashboard')
+            # Redirigir directamente según rol
+            try:
+                if user.cliente:
+                    return redirect('portal_cliente')
+            except Cliente.DoesNotExist:
+                pass
+
+            if user.is_staff:
+                return redirect('dashboard_admin')
+            elif user.groups.filter(name='Encargados').exists():
+                return redirect('dashboard_encargado')
+            else:
+                messages.error(request, 'No tiene un rol asignado. Contacte al administrador.')
+                from django.contrib.auth import logout
+                logout(request)
         else:
             messages.error(request, 'Usuario o contraseña incorrectos')
 
@@ -39,24 +70,48 @@ def login_view(request):
 @login_required
 def dashboard(request):
     """Dashboard principal según el rol del usuario"""
-    if hasattr(request.user, 'cliente'):
-        return redirect('portal_cliente')
-    elif request.user.is_staff:
+    # Verificar si existe el objeto Cliente
+    try:
+        if request.user.cliente:
+            return redirect('portal_cliente')
+    except Cliente.DoesNotExist:
+        pass
+
+    if request.user.is_staff:
         return redirect('dashboard_admin')
     elif request.user.groups.filter(name='Encargados').exists():
         return redirect('dashboard_encargado')
     else:
-        messages.info(request, 'No tiene un rol asignado. Contacte al administrador.')
+        messages.error(request, 'No tiene un rol asignado. Contacte al administrador.')
+        from django.contrib.auth import logout
+        logout(request)
         return redirect('login')
 
 
 def registro_cliente(request):
     """Registro de nuevos clientes"""
+    if request.user.is_authenticated:
+        # Si ya está autenticado, redirigir según rol
+        try:
+            if request.user.cliente:
+                return redirect('portal_cliente')
+        except Cliente.DoesNotExist:
+            pass
+        if request.user.is_staff:
+            return redirect('dashboard_admin')
+        elif request.user.groups.filter(name='Encargados').exists():
+            return redirect('dashboard_encargado')
+
     if request.method == 'POST':
         form = RegistroClienteForm(request.POST)
         if form.is_valid():
-            form.save()
-            messages.success(request, 'Registro exitoso. Por favor inicie sesión.')
+            user = form.save()
+            # Verificar que el Cliente se creó correctamente
+            try:
+                cliente = Cliente.objects.get(usuario=user)
+                messages.success(request, f'Registro exitoso. Bienvenido {cliente.nombre}. Por favor inicie sesión.')
+            except Cliente.DoesNotExist:
+                messages.error(request, 'Error al crear el perfil de cliente. Contacte al administrador.')
             return redirect('login')
     else:
         form = RegistroClienteForm()
@@ -599,7 +654,7 @@ def dashboard_encargado(request):
         fechaInicio__gte=hoy,
         estado='confirmada',
         confirmacion_cliente=True
-    ).order_by('fechaInicio')
+    ).select_related('cliente', 'cabaña', 'entrega').order_by('fechaInicio')
 
     # Confirmaciones pendientes (reservas confirmadas por admin pero no por cliente)
     confirmaciones_pendientes = Reserva.objects.filter(
@@ -615,7 +670,7 @@ def dashboard_encargado(request):
         fechaInicio__gte=hoy,
         estado='confirmada',
         confirmacion_cliente=True
-    )
+    ).select_related('cliente', 'cabaña', 'entrega')
 
     context = {
         'mantenimientos_pendientes': mantenimientos_pendientes,
@@ -710,23 +765,120 @@ def estado_cabañas(request):
 
 @encargado_required
 def preparar_cabañas(request):
-    """Preparar cabañas para reservas próximas"""
+    """Lista de cabañas que requieren preparación"""
     hoy = timezone.now().date()
     reservas_proximas = Reserva.objects.filter(
-        fechaInicio__lte=hoy + timedelta(days=1),
+        fechaInicio__lte=hoy + timedelta(days=3),
         fechaInicio__gte=hoy,
         estado='confirmada',
         confirmacion_cliente=True
+    ).select_related('cliente', 'cabaña', 'entrega').order_by('fechaInicio')
+
+    # Preparaciones existentes
+    preparaciones = PreparacionCabaña.objects.filter(
+        reserva__in=reservas_proximas
+    ).select_related('reserva', 'encargado')
+
+    preparaciones_dict = {p.reserva.idReserva: p for p in preparaciones}
+
+    return render(request, 'encargado/preparar_cabañas.html', {
+        'reservas_proximas': reservas_proximas,
+        'preparaciones': preparaciones_dict,
+        'hoy': hoy
+    })
+
+
+@encargado_required
+def preparacion_cabaña(request, reserva_id):
+    """Vista detallada de preparación de cabaña"""
+    reserva = get_object_or_404(Reserva, idReserva=reserva_id)
+
+    # Crear o obtener preparación
+    preparacion, created = PreparacionCabaña.objects.get_or_create(
+        reserva=reserva,
+        defaults={
+            'encargado': request.user,
+            'estado': 'en_proceso'
+        }
     )
 
-    if request.method == 'POST':
-        reserva_id = request.POST.get('reserva_id')
-        reserva = get_object_or_404(Reserva, idReserva=reserva_id)
-        reserva.enviarNotificacionPreparacion()
-        messages.success(request, f'Notificación de preparación enviada para {reserva.cabaña.nombre}.')
-        return redirect('preparar_cabañas')
+    if created:
+        # Inicializar tareas de preparación
+        tareas = TareaPreparacion.objects.all().order_by('categoria', 'orden')
+        for tarea in tareas:
+            ItemPreparacionCompletado.objects.create(
+                preparacion=preparacion,
+                tarea=tarea,
+                completado=False
+            )
 
-    return render(request, 'encargado/preparar_cabañas.html', {'reservas_proximas': reservas_proximas})
+    # Obtener items de preparación agrupados por categoría
+    items_preparacion = ItemPreparacionCompletado.objects.filter(
+        preparacion=preparacion
+    ).select_related('tarea').order_by('tarea__categoria', 'tarea__orden')
+
+    tareas_por_categoria = {}
+    for item in items_preparacion:
+        categoria_display = item.tarea.get_categoria_display()
+        if categoria_display not in tareas_por_categoria:
+            tareas_por_categoria[categoria_display] = []
+        tareas_por_categoria[categoria_display].append(item)
+
+    porcentaje_completado = preparacion.porcentaje_completado()
+    dias_restantes = (reserva.fechaInicio - timezone.now().date()).days
+
+    if request.method == 'POST':
+        # Procesar tareas completadas
+        tareas_completadas = request.POST.getlist('tareas_completadas')
+
+        # Actualizar estado de tareas
+        for item in items_preparacion:
+            tarea_id = str(item.tarea.idTareaPreparacion)
+            if tarea_id in tareas_completadas:
+                if not item.completado:
+                    item.completado = True
+                    item.fecha_completado = timezone.now()
+                    item.save()
+            else:
+                if item.completado:
+                    item.completado = False
+                    item.fecha_completado = None
+                    item.save()
+
+        # Actualizar observaciones
+        observaciones = request.POST.get('observaciones', '')
+        preparacion.observaciones = observaciones
+
+        # Verificar si todas las tareas están completadas
+        porcentaje = preparacion.porcentaje_completado()
+        if request.POST.get('completar_preparacion'):
+            preparacion.estado = 'completada'
+            preparacion.fecha_completacion = timezone.now()
+            messages.success(request, 'Preparación completada exitosamente. La cabaña está lista para entrega.')
+        elif porcentaje > 0:
+            preparacion.estado = 'en_proceso'
+        else:
+            preparacion.estado = 'pendiente'
+
+        preparacion.save()
+
+        # Redirigir según acción
+        if request.POST.get('completar_preparacion'):
+            # Crear entrega automáticamente si no existe
+            generar_checklist_desde_reserva(reserva)
+            messages.success(request, 'Preparación completada. El checklist de entrega está listo.')
+            return redirect('checklist_entrega_encargado', reserva_id=reserva.idReserva)
+
+        return redirect('preparacion_cabaña', reserva_id=reserva.idReserva)
+
+    return render(request, 'encargado/preparacion_cabaña.html', {
+        'reserva': reserva,
+        'preparacion': preparacion,
+        'tareas_por_categoria': tareas_por_categoria,
+        'items_preparacion': items_preparacion,
+        'porcentaje_completado': porcentaje_completado,
+        'dias_restantes': dias_restantes
+    })
 
 
 @encargado_required
@@ -734,11 +886,35 @@ def checklist_entrega_encargado(request, reserva_id):
     """Checklist de entrega para encargados - Check-in"""
     reserva = get_object_or_404(Reserva, idReserva=reserva_id)
 
+    # Verificar que existe checklist base para esta cabaña
+    items_checklist_base = ChecklistInventario.objects.filter(cabaña=reserva.cabaña)
+
+    if not items_checklist_base.exists():
+        messages.warning(
+            request,
+            f'⚠️ No hay items configurados en el checklist para {reserva.cabaña.nombre}. '
+            f'Por favor ejecuta: python manage.py poblar_checklist'
+        )
+        return redirect('dashboard_encargado')
+
     # Generar checklist automáticamente si no existe
     entrega = generar_checklist_desde_reserva(reserva)
 
     # Obtener items de verificación agrupados por categoría
     items_verificacion = ItemVerificacion.objects.filter(entrega=entrega).order_by('item__orden', 'item__categoria', 'item__nombre_item')
+
+    if not items_verificacion.exists():
+        # Si no hay items de verificación, crearlos desde el checklist base
+        for item_checklist in items_checklist_base:
+            ItemVerificacion.objects.get_or_create(
+                entrega=entrega,
+                item=item_checklist,
+                defaults={
+                    'cantidad_entregada': item_checklist.cantidad_esperada,
+                    'estado_entregado': 'bueno'
+                }
+            )
+        items_verificacion = ItemVerificacion.objects.filter(entrega=entrega).order_by('item__orden', 'item__categoria', 'item__nombre_item')
 
     categorias_items = {}
     for item_ver in items_verificacion:

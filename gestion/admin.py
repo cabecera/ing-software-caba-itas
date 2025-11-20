@@ -2,7 +2,8 @@ from django.contrib import admin
 from .models import (
     Cliente, Reserva, Cabaña, Encuesta, Pago,
     Implemento, PrestamoImplemento, Mantenimiento,
-    Notificacion, ChecklistInventario, EntregaCabaña, ItemFaltante, ItemVerificacion
+    Notificacion, ChecklistInventario, EntregaCabaña, ItemFaltante, ItemVerificacion,
+    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado
 )
 
 @admin.register(Cliente)
@@ -75,6 +76,26 @@ class ItemFaltanteAdmin(admin.ModelAdmin):
     list_display = ('idItemFaltante', 'entrega', 'item_checklist', 'cantidad_faltante')
     list_filter = ('entrega', 'item_checklist')
     search_fields = ('item_checklist__nombre_item',)
+
+@admin.register(TareaPreparacion)
+class TareaPreparacionAdmin(admin.ModelAdmin):
+    list_display = ('nombre', 'categoria', 'orden', 'es_obligatoria')
+    list_filter = ('categoria', 'es_obligatoria')
+    search_fields = ('nombre', 'descripcion')
+    ordering = ('categoria', 'orden', 'nombre')
+
+@admin.register(PreparacionCabaña)
+class PreparacionCabañaAdmin(admin.ModelAdmin):
+    list_display = ('idPreparacion', 'reserva', 'estado', 'encargado', 'fecha_inicio', 'fecha_completacion')
+    list_filter = ('estado', 'fecha_inicio')
+    search_fields = ('reserva__cliente__nombre', 'reserva__cabaña__nombre')
+    readonly_fields = ('fecha_inicio',)
+
+@admin.register(ItemPreparacionCompletado)
+class ItemPreparacionCompletadoAdmin(admin.ModelAdmin):
+    list_display = ('preparacion', 'tarea', 'completado', 'fecha_completado')
+    list_filter = ('completado', 'tarea__categoria', 'preparacion')
+    search_fields = ('tarea__nombre', 'preparacion__reserva__cabaña__nombre')
 
 
 

@@ -40,6 +40,7 @@ urlpatterns = [
     path('encargado/prestamos/<int:prestamo_id>/devolucion/', views.registrar_devolucion, name='registrar_devolucion'),
     path('encargado/estado-cabañas/', views.estado_cabañas, name='estado_cabañas'),
     path('encargado/preparar-cabañas/', views.preparar_cabañas, name='preparar_cabañas'),
+    path('encargado/preparacion-cabaña/<int:reserva_id>/', views.preparacion_cabaña, name='preparacion_cabaña'),
     path('encargado/checklist-entrega/<int:reserva_id>/', views.checklist_entrega_encargado, name='checklist_entrega_encargado'),
     path('encargado/verificacion-devolucion/<int:reserva_id>/', views.verificacion_devolucion, name='verificacion_devolucion'),
 ]

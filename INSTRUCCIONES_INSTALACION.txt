@@ -1,0 +1,210 @@
+Requisitos previos
+Pasos detallados:
+    Verificar Python
+    Navegar a la carpeta del proyecto
+    Crear entorno virtual (opcional)
+    Instalar dependencias
+    Realizar migraciones
+    Crear superusuario (opcional)
+    Poblar datos iniciales (obligatorio)
+    Ejecutar el servidor
+    Acceder al administrador
+
+1. pip install -r requirements.txt
+2. python manage.py migrate
+3. python manage.py poblar_checklist
+4. python manage.py poblar_tareas_preparacion
+5. python manage.py runserver
+
+
+
+
+
+
+
+
+
+====================================================
+INSTRUCCIONES PARA INSTALAR Y EJECUTAR EL SISTEMA
+"LAS CABAÑITAS" - Django
+====================================================
+
+REQUISITOS PREVIOS:
+- Python 3.8 o superior instalado
+- pip (gestor de paquetes de Python)
+
+====================================================
+PASO 1: VERIFICAR PYTHON
+====================================================
+Abre la terminal/consola y ejecuta:
+  python --version
+  o
+  python3 --version
+
+Si no tienes Python instalado, descárgalo desde:
+  https://www.python.org/downloads/
+
+====================================================
+PASO 2: NAVEGAR A LA CARPETA DEL PROYECTO
+====================================================
+Ejecuta el comando para ir a la carpeta del proyecto:
+  cd C:\Users\cibec\Downloads\cabaña
+  (o la ruta donde hayas copiado el proyecto)
+
+====================================================
+PASO 3: CREAR UN ENTORNO VIRTUAL (RECOMENDADO)
+====================================================
+Para crear un entorno virtual:
+  python -m venv venv
+
+Para activar el entorno virtual:
+  Windows:
+    venv\Scripts\activate
+  Linux/Mac:
+    source venv/bin/activate
+
+====================================================
+PASO 4: INSTALAR DEPENDENCIAS
+====================================================
+Si tienes un archivo requirements.txt, ejecuta:
+  pip install -r requirements.txt
+
+Si no tienes requirements.txt, instala Django manualmente:
+  pip install Django
+
+====================================================
+PASO 5: REALIZAR MIGRACIONES DE BASE DE DATOS
+====================================================
+Crea las tablas en la base de datos:
+  python manage.py migrate
+
+====================================================
+PASO 6: CREAR UN SUPERUSUARIO (OPCIONAL)
+====================================================
+Para crear un usuario administrador:
+  python manage.py createsuperuser
+
+Te pedirá:
+  - Username (nombre de usuario)
+  - Email address (opcional)
+  - Password (contraseña)
+  - Password (again) (confirmar contraseña)
+
+====================================================
+PASO 7: POBLAR DATOS INICIALES
+====================================================
+Estos comandos son OBLIGATORIOS para que el sistema funcione correctamente.
+
+1. Poblar el checklist de inventario:
+  python manage.py poblar_checklist
+
+2. Poblar las tareas de preparación:
+  python manage.py poblar_tareas_preparacion
+
+====================================================
+PASO 8: EJECUTAR EL SERVIDOR DE DESARROLLO
+====================================================
+Para iniciar el servidor:
+  python manage.py runserver
+
+El sistema estará disponible en:
+  http://127.0.0.1:8000/
+  o
+  http://localhost:8000/
+
+Para detener el servidor, presiona:
+  Ctrl + C
+
+====================================================
+PASO 9: ACCEDER AL ADMINISTRADOR (OPCIONAL)
+====================================================
+Si creaste un superusuario, puedes acceder al panel de administración:
+  http://127.0.0.1:8000/admin/
+
+====================================================
+COMANDOS ÚTILES ADICIONALES
+====================================================
+
+- Verificar que no haya errores en el código:
+  python manage.py check
+
+- Ver todas las migraciones pendientes:
+  python manage.py showmigrations
+
+- Crear migraciones para cambios en modelos:
+  python manage.py makemigrations
+
+- Ver información del proyecto:
+  python manage.py help
+
+- Limpiar archivos compilados de Python (si es necesario):
+  Windows:
+    del /s /q *.pyc
+    for /d /r . %d in (__pycache__) do @if exist "%d" rd /s /q "%d"
+  Linux/Mac:
+    find . -type f -name "*.pyc" -delete
+    find . -type d -name "__pycache__" -delete
+
+====================================================
+SOLUCIÓN DE PROBLEMAS COMUNES
+====================================================
+
+1. ERROR: "No module named 'django'"
+   SOLUCIÓN: Ejecuta: pip install Django
+
+2. ERROR: "no such column" o errores de migraciones
+   SOLUCIÓN: Ejecuta: python manage.py migrate
+
+3. ERROR: "No such table"
+   SOLUCIÓN: Ejecuta: python manage.py migrate
+
+4. ERROR: "⚠️ No hay items configurados en el checklist"
+   SOLUCIÓN: Ejecuta: python manage.py poblar_checklist
+
+5. ERROR: El servidor no inicia
+   SOLUCIÓN: Verifica que no haya otro proceso usando el puerto 8000.
+             Puedes cambiar el puerto: python manage.py runserver 8001
+
+6. ERROR: Problemas con la base de datos
+   SOLUCIÓN: Elimina el archivo db.sqlite3 y ejecuta de nuevo:
+             python manage.py migrate
+
+====================================================
+SECUENCIA COMPLETA DE COMANDOS (RESUMEN)
+====================================================
+
+1. cd ruta_del_proyecto
+2. python -m venv venv (opcional pero recomendado)
+3. venv\Scripts\activate (si usaste venv)
+4. pip install Django (o pip install -r requirements.txt)
+5. python manage.py migrate
+6. python manage.py createsuperuser (opcional)
+7. python manage.py poblar_checklist (OBLIGATORIO)
+8. python manage.py poblar_tareas_preparacion (OBLIGATORIO)
+9. python manage.py runserver
+10. Abrir navegador en: http://127.0.0.1:8000/
+
+====================================================
+NOTAS IMPORTANTES
+====================================================
+
+- Si copias el proyecto a otra PC, asegúrate de copiar TODA la carpeta
+- No olvides ejecutar los comandos de población de datos (paso 7)
+- El archivo db.sqlite3 contiene la base de datos local
+- Los archivos estáticos están en gestion/static/
+- Las plantillas están en gestion/templates/
+
+====================================================
+CONTACTO Y SOPORTE
+====================================================
+
+Si encuentras problemas, verifica:
+1. Que Python esté instalado correctamente
+2. Que todas las dependencias estén instaladas
+3. Que hayas ejecutado todas las migraciones
+4. Que hayas poblado los datos iniciales (checklist y tareas)
+
+====================================================
+FIN DE LAS INSTRUCCIONES
+====================================================
+

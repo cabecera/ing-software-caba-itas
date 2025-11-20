@@ -1,0 +1,122 @@
+{% extends 'base.html' %}
+
+{% block title %}Preparación de Cabaña - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">🔧 Preparación de Cabaña - {{ reserva.cabaña.nombre }}</h1>
+
+<div class="card">
+    <h3>Información de la Reserva</h3>
+    <div class="info-group">
+        <p><strong>Reserva #:</strong> {{ reserva.idReserva }}</p>
+        <p><strong>Cliente:</strong> {{ reserva.cliente.nombre }}</p>
+        <p><strong>Cabaña:</strong> {{ reserva.cabaña.nombre }}</p>
+        <p><strong>Fecha de Inicio:</strong> {{ reserva.fechaInicio }}</p>
+        <p><strong>Fecha de Fin:</strong> {{ reserva.fechaFin }}</p>
+        <p><strong>Días Restantes:</strong>
+            {% if dias_restantes > 0 %}
+                <span class="badge badge-info">{{ dias_restantes }} día{{ dias_restantes|pluralize }}</span>
+            {% elif dias_restantes == 0 %}
+                <span class="badge badge-warning">¡HOY!</span>
+            {% else %}
+                <span class="badge badge-danger">Atrasada</span>
+            {% endif %}
+        </p>
+        <p><strong>Estado:</strong>
+            <span class="status-badge-inline status-{{ preparacion.estado }}">
+                {{ preparacion.get_estado_display }}
+            </span>
+        </p>
+    </div>
+</div>
+
+
+<form method="post">
+    {% csrf_token %}
+
+    {% for categoria, items in tareas_por_categoria.items %}
+    <div class="card">
+        <div class="checklist-categoria">
+            <h4>{{ categoria }}</h4>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>✓</th>
+                    <th>Tarea</th>
+                    <th>Estado</th>
+                    <th>Completado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in items %}
+                <tr class="{% if item.completado %}item-completado{% else %}item-pendiente{% endif %}">
+                    <td>
+                        <input type="checkbox"
+                               name="tareas_completadas"
+                               value="{{ item.tarea.idTareaPreparacion }}"
+                               {% if item.completado %}checked{% endif %}
+                               id="tarea_{{ item.tarea.idTareaPreparacion }}">
+                    </td>
+                    <td>
+                        <label for="tarea_{{ item.tarea.idTareaPreparacion }}" style="cursor: pointer;">
+                            <strong>{{ item.tarea.nombre }}</strong>
+                            {% if item.tarea.es_obligatoria %}
+                            <span class="badge badge-warning">Obligatorio</span>
+                            {% endif %}
+                            {% if item.tarea.descripcion %}
+                            <br><small class="text-muted">{{ item.tarea.descripcion }}</small>
+                            {% endif %}
+                        </label>
+                    </td>
+                    <td>
+                        {% if item.completado %}
+                            <span class="badge badge-success">✓ Completado</span>
+                        {% else %}
+                            <span class="badge badge-secondary">Pendiente</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if item.completado %}
+                            <small>{{ item.fecha_completado|date:"d/m/Y H:i" }}</small>
+                        {% else %}
+                            <small class="text-muted">-</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    <div class="card">
+        <div class="form-group">
+            <label for="observaciones"><strong>Observaciones Generales:</strong></label>
+            <textarea name="observaciones" id="observaciones" rows="4" class="form-control">{{ preparacion.observaciones }}</textarea>
+        </div>
+    </div>
+
+    <div class="card">
+        <button type="submit" class="btn btn-primary">Guardar Progreso</button>
+
+        <button type="submit" name="completar_preparacion" class="btn btn-success" style="margin-left: 10px;">
+            Completar Preparación e Ir al Checklist de Entrega
+        </button>
+
+        <a href="{% url 'preparar_cabañas' %}" class="btn btn-secondary" style="margin-left: 10px;">Volver a Preparar Cabañas</a>
+        <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+    </div>
+</form>
+
+<style>
+.item-completado {
+    background-color: #f0f8f0;
+}
+.item-pendiente {
+    background-color: #fff8f0;
+}
+</style>
+{% endblock %}
+

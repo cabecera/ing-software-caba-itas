@@ -137,12 +137,18 @@
                     </td>
                     <td>
                         {% if reserva.confirmacion_cliente %}
-                            <form method="post" action="{% url 'preparar_cabañas' %}" class="inline-form">
-                                {% csrf_token %}
-                                <input type="hidden" name="reserva_id" value="{{ reserva.idReserva }}">
-                                <button type="submit" class="btn btn-primary">Marcar Preparada</button>
-                            </form>
-                            <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success">Ver Checklist</a>
+                            {% if reserva.entrega %}
+                                {% if reserva.entrega.estado == 'entregada' or reserva.entrega.estado == 'verificada' %}
+                                    <span class="badge badge-success">✓ Checklist Listo</span>
+                                    {% if reserva.entrega.fecha_entrega %}
+                                    <br><small class="text-muted">Completado: {{ reserva.entrega.fecha_entrega|date:"d/m/Y H:i" }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success">Ver Checklist</a>
+                                {% endif %}
+                            {% else %}
+                                <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-success">Ver Checklist</a>
+                            {% endif %}
                         {% else %}
                             <span class="error-text">Esperando confirmación del cliente</span>
                         {% endif %}
@@ -184,7 +190,18 @@
                     </td>
                     <td>
                         {% if reserva.confirmacion_cliente %}
-                            <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-primary">Ver Checklist</a>
+                            {% if reserva.entrega %}
+                                {% if reserva.entrega.estado == 'entregada' or reserva.entrega.estado == 'verificada' %}
+                                    <span class="badge badge-success">✓ Checklist Listo</span>
+                                    {% if reserva.entrega.fecha_entrega %}
+                                    <br><small class="text-muted">Completado: {{ reserva.entrega.fecha_entrega|date:"d/m/Y H:i" }}</small>
+                                    {% endif %}
+                                {% else %}
+                                    <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-primary">Ver Checklist</a>
+                                {% endif %}
+                            {% else %}
+                                <a href="{% url 'checklist_entrega_encargado' reserva.idReserva %}" class="btn btn-primary">Ver Checklist</a>
+                            {% endif %}
                         {% else %}
                             <span class="info-text">Esperando confirmación del cliente</span>
                         {% endif %}
