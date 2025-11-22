@@ -6,36 +6,111 @@
 <h1 class="page-title">Dashboard Encargado</h1>
 
 <div class="card">
-    <h3>Mantenimientos Pendientes (Próximos 7 días)</h3>
-    {% if mantenimientos_pendientes %}
+    <h3>Cabañas en Preparación</h3>
+    {% if cabañas_en_preparacion %}
         <table>
             <thead>
                 <tr>
                     <th>Cabaña</th>
-                    <th>Tipo</th>
-                    <th>Fecha Programada</th>
+                    <th>Capacidad</th>
                     <th>Estado</th>
                     <th>Acciones</th>
                 </tr>
             </thead>
             <tbody>
-                {% for mantenimiento in mantenimientos_pendientes %}
+                {% for cabaña in cabañas_en_preparacion %}
                 <tr>
-                    <td>{{ mantenimiento.cabaña.nombre }}</td>
-                    <td>{{ mantenimiento.get_tipo_display }}</td>
-                    <td>{{ mantenimiento.fechaProgramada }}</td>
-                    <td>{{ mantenimiento.get_estado_display }}</td>
+                    <td>{{ cabaña.nombre }}</td>
+                    <td>{{ cabaña.capacidad }} personas</td>
                     <td>
-                        {% if mantenimiento.estado != 'completado' %}
-                            <a href="{% url 'finalizar_mantenimiento' mantenimiento.idMantenimiento %}" class="btn btn-success">Finalizar</a>
-                        {% endif %}
+                        <span class="status-badge-inline status-en_preparacion">
+                            {{ cabaña.get_estado_display }}
+                        </span>
+                    </td>
+                    <td>
+                        {% for prep in preparaciones_activas %}
+                            {% if prep.reserva.cabaña.idCabaña == cabaña.idCabaña %}
+                                <a href="{% url 'preparacion_cabaña' prep.reserva.idReserva %}" class="btn btn-primary btn-sm">Ver Detalles</a>
+                            {% endif %}
+                        {% endfor %}
                     </td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
     {% else %}
-        <p>No hay mantenimientos pendientes.</p>
+        <p>No hay cabañas en preparación actualmente.</p>
+    {% endif %}
+</div>
+
+<div class="card alert alert-warning">
+    <h3>Cabañas Pendientes (Faltantes)</h3>
+    {% if cabañas_pendientes %}
+        <p><strong>ATENCIÓN:</strong> Estas cabañas tienen reportes de faltantes pendientes y no pueden estar LISTAS hasta que se resuelvan.</p>
+        <table>
+            <thead>
+                <tr>
+                    <th>Cabaña</th>
+                    <th>Capacidad</th>
+                    <th>Reportes Pendientes</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cabaña in cabañas_pendientes %}
+                <tr>
+                    <td>{{ cabaña.nombre }}</td>
+                    <td>{{ cabaña.capacidad }} personas</td>
+                    <td>
+                        {% for reporte in reportes_faltantes_pendientes %}
+                            {% if reporte.cabaña.idCabaña == cabaña.idCabaña %}
+                                <span class="badge badge-danger">Reporte #{{ reporte.idReporte }}</span>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                    <td>
+                        {% for prep in preparaciones_activas %}
+                            {% if prep.reserva.cabaña.idCabaña == cabaña.idCabaña %}
+                                <a href="{% url 'preparacion_cabaña' prep.reserva.idReserva %}" class="btn btn-warning btn-sm">Ver Faltantes</a>
+                            {% endif %}
+                        {% endfor %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay cabañas pendientes.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Cabañas Listas</h3>
+    {% if cabañas_listas %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Cabaña</th>
+                    <th>Capacidad</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cabaña in cabañas_listas %}
+                <tr>
+                    <td>{{ cabaña.nombre }}</td>
+                    <td>{{ cabaña.capacidad }} personas</td>
+                    <td>
+                        <span class="status-badge-inline status-lista">
+                            {{ cabaña.get_estado_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay cabañas listas actualmente.</p>
     {% endif %}
 </div>
 
@@ -216,10 +291,10 @@
 </div>
 
 <div class="mt-30">
-    <a href="{% url 'inventario_cabañas' %}" class="btn">Gestionar Inventario</a>
-    <a href="{% url 'gestion_mantenimiento' %}" class="btn">Gestionar Mantenimiento</a>
-    <a href="{% url 'prestamos_implementos' %}" class="btn">Préstamos de Implementos</a>
-    <a href="{% url 'estado_cabañas' %}" class="btn">Estado de Cabañas</a>
+    <a href="{% url 'preparar_cabañas' %}" class="btn">Lista de Cabañas a Preparar</a>
+    <a href="{% url 'inventario_cabañas' %}" class="btn">Registro de Inventario</a>
+    <a href="{% url 'reporte_faltantes' %}" class="btn">Reporte de Faltantes</a>
+    <a href="{% url 'notificaciones_encargado' %}" class="btn">Notificaciones Recibidas</a>
 </div>
 {% endblock %}
 

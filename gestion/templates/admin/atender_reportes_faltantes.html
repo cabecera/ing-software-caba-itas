@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}Atender Reportes de Faltantes - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Atender Reportes de Faltantes</h1>
+
+{% if reportes_pendientes %}
+    {% for reporte in reportes_pendientes %}
+    <div class="card reporte-card {% if reporte.faltantes_criticos %}reporte-critico{% endif %}">
+        <div class="reporte-header">
+            <div style="flex: 1;">
+                <h3>
+                    Reporte #{{ reporte.idReporte }} - {{ reporte.cabaña.nombre }}
+                    {% if reporte.faltantes_criticos %}
+                        <span class="badge badge-danger">CRÍTICO</span>
+                    {% endif %}
+                </h3>
+                <div class="info-group">
+                    <p><strong>Encargado:</strong> {{ reporte.encargado.username|default:"N/A" }}</p>
+                    <p><strong>Fecha Creación:</strong> {{ reporte.fecha_creacion|date:"d/m/Y H:i" }}</p>
+                    <p><strong>Estado:</strong>
+                        <span class="status-badge-inline status-{{ reporte.estado }}">
+                            {{ reporte.get_estado_display }}
+                        </span>
+                    </p>
+                    {% if reporte.fecha_atencion %}
+                        <p><strong>Atendido por:</strong> {{ reporte.administrador_atendio.username|default:"N/A" }}</p>
+                        <p><strong>Fecha Atención:</strong> {{ reporte.fecha_atencion|date:"d/m/Y H:i" }}</p>
+                    {% endif %}
+                </div>
+                <div style="margin-top: 15px;">
+                    <h4>Descripción del Problema:</h4>
+                    <p style="background-color: #f5f5f5; padding: 10px; border-radius: 5px;">{{ reporte.descripcion }}</p>
+                </div>
+                {% if reporte.observaciones_atencion %}
+                <div style="margin-top: 15px;">
+                    <h4>Observaciones de Atención:</h4>
+                    <p style="background-color: #e7f3ff; padding: 10px; border-radius: 5px;">{{ reporte.observaciones_atencion }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #ddd;">
+            {% if reporte.estado == 'pendiente' %}
+                <form method="post" style="display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="marcar_atendido">
+                    <input type="hidden" name="reporte_id" value="{{ reporte.idReporte }}">
+                    <div class="form-group">
+                        <label for="observaciones_atencion_{{ reporte.idReporte }}"><strong>Observaciones de Atención:</strong></label>
+                        <textarea name="observaciones_atencion" id="observaciones_atencion_{{ reporte.idReporte }}" rows="3" class="form-control" placeholder="Ej: Insumos comprados, equipos reparados..."></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Marcar como Atendido</button>
+                </form>
+            {% elif reporte.estado == 'atendido' %}
+                <form method="post" style="display: inline-block;">
+                    {% csrf_token %}
+                    <input type="hidden" name="accion" value="marcar_resuelto">
+                    <input type="hidden" name="reporte_id" value="{{ reporte.idReporte }}">
+                    <button type="submit" class="btn btn-success">Marcar como Resuelto</button>
+                </form>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+{% else %}
+    <div class="card">
+        <p>No hay reportes de faltantes pendientes.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+
+<style>
+.reporte-card {
+    margin-bottom: 20px;
+}
+
+.reporte-critico {
+    border-left: 4px solid #dc3545;
+}
+
+.reporte-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+</style>
+{% endblock %}
+

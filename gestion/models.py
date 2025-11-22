@@ -31,6 +31,7 @@ class Cliente(models.Model):
         return f"{self.nombre} ({self.email})"
 
     class Meta:
+        db_table = 'cliente'
         verbose_name = "Cliente"
         verbose_name_plural = "Clientes"
 
@@ -38,9 +39,12 @@ class Cliente(models.Model):
 class Cabaña(models.Model):
     """Modelo para cabañas disponibles"""
     ESTADOS = [
-        ('disponible', 'Disponible'),
-        ('ocupada', 'Ocupada'),
+        ('lista', 'Lista'),
+        ('en_preparacion', 'En Preparación'),
+        ('pendiente', 'Pendiente'),
         ('mantenimiento', 'En Mantenimiento'),
+        ('disponible', 'Disponible'),  # Mantener para compatibilidad
+        ('ocupada', 'Ocupada'),
         ('reservada', 'Reservada'),
     ]
 
@@ -54,6 +58,7 @@ class Cabaña(models.Model):
         return f"{self.nombre} (Cap: {self.capacidad})"
 
     class Meta:
+        db_table = 'cabana'
         verbose_name = "Cabaña"
         verbose_name_plural = "Cabañas"
 
@@ -175,6 +180,7 @@ class Reserva(models.Model):
         return f"Reserva #{self.idReserva} - {self.cliente.nombre} - {self.cabaña.nombre}"
 
     class Meta:
+        db_table = 'reserva'
         verbose_name = "Reserva"
         verbose_name_plural = "Reservas"
         ordering = ['-fechaCreacion']
@@ -192,6 +198,7 @@ class Encuesta(models.Model):
         return f"Encuesta #{self.idEncuesta} - Reserva #{self.reserva.idReserva} - {self.calificacion} estrellas"
 
     class Meta:
+        db_table = 'encuesta'
         verbose_name = "Encuesta"
         verbose_name_plural = "Encuestas"
 
@@ -224,6 +231,7 @@ class Pago(models.Model):
         return f"Pago #{self.idPago} - {self.reserva} - ${self.monto}"
 
     class Meta:
+        db_table = 'pago'
         verbose_name = "Pago"
         verbose_name_plural = "Pagos"
 
@@ -266,6 +274,7 @@ class Implemento(models.Model):
         return f"{self.nombre} ({self.cantidadDisponible}/{self.cantidadTotal})"
 
     class Meta:
+        db_table = 'implemento'
         verbose_name = "Implemento"
         verbose_name_plural = "Implementos"
 
@@ -302,6 +311,7 @@ class PrestamoImplemento(models.Model):
         return f"Préstamo #{self.idPrestamo} - {self.implemento.nombre} x{self.cantidad}"
 
     class Meta:
+        db_table = 'prestamo_implemento'
         verbose_name = "Préstamo de Implemento"
         verbose_name_plural = "Préstamos de Implementos"
 
@@ -353,6 +363,7 @@ class Mantenimiento(models.Model):
         return f"Mantenimiento #{self.idMantenimiento} - {self.cabaña.nombre} - {self.tipo}"
 
     class Meta:
+        db_table = 'mantenimiento'
         verbose_name = "Mantenimiento"
         verbose_name_plural = "Mantenimientos"
         ordering = ['fechaProgramada']
@@ -388,6 +399,7 @@ class Notificacion(models.Model):
         return f"Notificación #{self.idNotificacion} - {self.tipo} - {self.usuario}"
 
     class Meta:
+        db_table = 'notificacion'
         verbose_name = "Notificación"
         verbose_name_plural = "Notificaciones"
         ordering = ['-fechaEnvio']
@@ -422,6 +434,7 @@ class ChecklistInventario(models.Model):
         return f"{self.nombre_item} - {self.cabaña.nombre}"
 
     class Meta:
+        db_table = 'checklist_inventario'
         verbose_name = "Item de Checklist"
         verbose_name_plural = "Checklist de Inventario"
         ordering = ['cabaña', 'orden', 'categoria', 'nombre_item']
@@ -482,6 +495,7 @@ class EntregaCabaña(models.Model):
         return f"Entrega #{self.idEntrega} - Reserva #{self.reserva.idReserva} - {self.get_estado_display()}"
 
     class Meta:
+        db_table = 'entrega_cabana'
         verbose_name = "Entrega de Cabaña"
         verbose_name_plural = "Entregas de Cabañas"
         ordering = ['-fecha_entrega']
@@ -529,30 +543,12 @@ class ItemVerificacion(models.Model):
         return f"Verificación: {self.item.nombre_item} - Entrega #{self.entrega.idEntrega}"
 
     class Meta:
+        db_table = 'item_verificacion'
         verbose_name = "Item de Verificación"
         verbose_name_plural = "Items de Verificación"
         ordering = ['entrega', 'item__orden', 'item__categoria']
 
 
-class ItemFaltante(models.Model):
-    """Modelo legacy para compatibilidad - usar ItemVerificacion en su lugar"""
-    idItemFaltante = models.AutoField(primary_key=True)
-    entrega = models.ForeignKey(EntregaCabaña, on_delete=models.CASCADE, related_name='items_faltantes')
-    item_checklist = models.ForeignKey(ChecklistInventario, on_delete=models.CASCADE, related_name='faltantes')
-    cantidad_faltante = models.IntegerField(default=1, verbose_name='Cantidad Faltante')
-    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
-
-    def calcular_cargo(self):
-        """Calcula el cargo por el item faltante"""
-        return self.item_checklist.precio_reposicion * self.cantidad_faltante
-
-    def __str__(self):
-        return f"Faltante: {self.item_checklist.nombre_item} - Cantidad: {self.cantidad_faltante}"
-
-    class Meta:
-        verbose_name = "Item Faltante"
-        verbose_name_plural = "Items Faltantes"
-        ordering = ['entrega', 'item_checklist']
 
 
 class TareaPreparacion(models.Model):
@@ -576,6 +572,7 @@ class TareaPreparacion(models.Model):
         return f"{self.get_categoria_display()} - {self.nombre}"
 
     class Meta:
+        db_table = 'tarea_preparacion'
         verbose_name = "Tarea de Preparación"
         verbose_name_plural = "Tareas de Preparación"
         ordering = ['categoria', 'orden', 'nombre']
@@ -611,6 +608,7 @@ class PreparacionCabaña(models.Model):
         return f"Preparación #{self.idPreparacion} - {self.reserva.cabaña.nombre} - Reserva #{self.reserva.idReserva}"
 
     class Meta:
+        db_table = 'preparacion_cabana'
         verbose_name = "Preparación de Cabaña"
         verbose_name_plural = "Preparaciones de Cabañas"
         ordering = ['-fecha_inicio']
@@ -629,8 +627,96 @@ class ItemPreparacionCompletado(models.Model):
         return f"{self.tarea.nombre} - {'✓' if self.completado else '✗'}"
 
     class Meta:
+        db_table = 'item_preparacion_completado'
         verbose_name = "Item de Preparación"
         verbose_name_plural = "Items de Preparación"
         unique_together = ['preparacion', 'tarea']
         ordering = ['tarea__categoria', 'tarea__orden']
+
+
+class VerificacionInventarioPreparacion(models.Model):
+    """Modelo para verificación de inventario durante la preparación"""
+    ESTADOS_ITEM = [
+        ('completo', 'Completo'),
+        ('faltante', 'Faltante'),
+        ('no_funciona', 'No Funciona'),
+    ]
+
+    idVerificacion = models.AutoField(primary_key=True)
+    preparacion = models.ForeignKey(PreparacionCabaña, on_delete=models.CASCADE, related_name='verificaciones_inventario')
+    item = models.ForeignKey(ChecklistInventario, on_delete=models.CASCADE, related_name='verificaciones_preparacion')
+    cantidad_actual = models.IntegerField(default=0, verbose_name='Cantidad Actual')
+    cantidad_esperada = models.IntegerField(verbose_name='Cantidad Esperada')
+    estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default='completo', verbose_name='Estado del Item')
+    verificado = models.BooleanField(default=False, verbose_name='Verificado')
+    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
+
+    def calcular_faltantes(self):
+        """Calcula la cantidad faltante"""
+        if self.estado_item == 'no_funciona':
+            return self.cantidad_esperada
+        return max(0, self.cantidad_esperada - self.cantidad_actual)
+
+    def esta_completo(self):
+        """Verifica si el item está completo"""
+        if self.estado_item == 'no_funciona':
+            return False
+        return self.cantidad_actual >= self.cantidad_esperada
+
+    def __str__(self):
+        return f"{self.item.nombre_item} - {self.cantidad_actual}/{self.cantidad_esperada} - {self.get_estado_item_display()}"
+
+    class Meta:
+        db_table = 'verificacion_inventario_preparacion'
+        verbose_name = "Verificación de Inventario"
+        verbose_name_plural = "Verificaciones de Inventario"
+        unique_together = ['preparacion', 'item']
+        ordering = ['item__categoria', 'item__orden']
+
+
+class ReporteFaltantes(models.Model):
+    """Modelo para reportes de faltantes durante la preparación de cabañas"""
+    ESTADOS = [
+        ('pendiente', 'Pendiente'),
+        ('atendido', 'Atendido'),
+        ('resuelto', 'Resuelto'),
+    ]
+
+    idReporte = models.AutoField(primary_key=True)
+    cabaña = models.ForeignKey(Cabaña, on_delete=models.CASCADE, related_name='reportes_faltantes')
+    preparacion = models.ForeignKey(PreparacionCabaña, on_delete=models.SET_NULL, null=True, blank=True,
+                                    related_name='reportes_faltantes', verbose_name='Preparación')
+    encargado = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                 related_name='reportes_faltantes_creados', verbose_name='Encargado')
+    descripcion = models.TextField(verbose_name='Descripción del Problema')
+    faltantes_criticos = models.BooleanField(default=True, verbose_name='Faltantes Críticos',
+                                            help_text='Si está marcado, la cabaña no puede estar LISTA hasta que se resuelva')
+    estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente', verbose_name='Estado')
+    fecha_creacion = models.DateTimeField(auto_now_add=True, verbose_name='Fecha Creación')
+    fecha_atencion = models.DateTimeField(null=True, blank=True, verbose_name='Fecha Atención')
+    administrador_atendio = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True,
+                                             related_name='reportes_faltantes_atendidos',
+                                             verbose_name='Administrador que Atendió')
+    observaciones_atencion = models.TextField(blank=True, verbose_name='Observaciones de Atención')
+
+    def marcar_atendido(self, administrador):
+        """Marca el reporte como atendido por un administrador"""
+        self.estado = 'atendido'
+        self.fecha_atencion = timezone.now()
+        self.administrador_atendio = administrador
+        self.save()
+
+    def marcar_resuelto(self):
+        """Marca el reporte como resuelto"""
+        self.estado = 'resuelto'
+        self.save()
+
+    def __str__(self):
+        return f"Reporte #{self.idReporte} - {self.cabaña.nombre} - {self.get_estado_display()}"
+
+    class Meta:
+        db_table = 'reporte_faltantes'
+        verbose_name = "Reporte de Faltantes"
+        verbose_name_plural = "Reportes de Faltantes"
+        ordering = ['-fecha_creacion']
 

@@ -1,0 +1,74 @@
+{% extends 'base.html' %}
+
+{% block title %}Calendario de Disponibilidad - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Calendario de Disponibilidad</h1>
+
+<div class="card">
+    <div class="calendario-header">
+        <a href="?mes={{ mes_anterior }}&año={{ año_anterior }}" class="btn">← Mes Anterior</a>
+        <h2>{{ mes_nombre }} {{ año }}</h2>
+        <a href="?mes={{ mes_siguiente }}&año={{ año_siguiente }}" class="btn">Mes Siguiente →</a>
+    </div>
+
+    <div class="calendario-container">
+        <table class="calendario-table">
+            <thead>
+                <tr>
+                    <th class="cabana-header">Cabaña</th>
+                    {% for dia in "1234567890123456789012345678901"|make_list %}
+                        {% if forloop.counter <= dias_mes %}
+                            <th>{{ forloop.counter }}</th>
+                        {% endif %}
+                    {% endfor %}
+                </tr>
+            </thead>
+            <tbody>
+                {% for fila in calendario_data %}
+                <tr>
+                    <td class="cabana-cell">{{ fila.cabaña.nombre }}</td>
+                    {% for dia_info in fila.dias %}
+                        <td class="calendario-dia-{{ dia_info.estado }}{% if dia_info.es_hoy %} calendario-dia-hoy{% endif %}">
+                            {% if dia_info.reserva %}
+                                <span title="Reserva #{{ dia_info.reserva.idReserva }} - {{ dia_info.reserva.cliente.nombre }}">●</span>
+                            {% elif dia_info.estado == 'mantenimiento' %}
+                                <span title="En Mantenimiento">⚠</span>
+                            {% else %}
+                                <span title="Disponible">✓</span>
+                            {% endif %}
+                        </td>
+                    {% endfor %}
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="calendario-leyenda">
+        <h4>Leyenda:</h4>
+        <div class="calendario-leyenda-items">
+            <div class="calendario-leyenda-item">
+                <span class="calendario-leyenda-color disponible"></span>
+                <span>Disponible</span>
+            </div>
+            <div class="calendario-leyenda-item">
+                <span class="calendario-leyenda-color reservada"></span>
+                <span>Reservada</span>
+            </div>
+            <div class="calendario-leyenda-item">
+                <span class="calendario-leyenda-color mantenimiento"></span>
+                <span>En Mantenimiento</span>
+            </div>
+            <div class="calendario-leyenda-item">
+                <span class="calendario-leyenda-color hoy"></span>
+                <span>Día Actual</span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}

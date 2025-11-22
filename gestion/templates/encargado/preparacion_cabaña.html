@@ -3,7 +3,7 @@
 {% block title %}Preparación de Cabaña - Las Cabañitas{% endblock %}
 
 {% block content %}
-<h1 class="page-title">🔧 Preparación de Cabaña - {{ reserva.cabaña.nombre }}</h1>
+<h1 class="page-title">Preparación de Cabaña - {{ reserva.cabaña.nombre }}</h1>
 
 <div class="card">
     <h3>Información de la Reserva</h3>
@@ -22,14 +22,35 @@
                 <span class="badge badge-danger">Atrasada</span>
             {% endif %}
         </p>
-        <p><strong>Estado:</strong>
+        <p><strong>Estado Preparación:</strong>
             <span class="status-badge-inline status-{{ preparacion.estado }}">
                 {{ preparacion.get_estado_display }}
             </span>
         </p>
+        <p><strong>Estado Cabaña:</strong>
+            <span class="status-badge-inline status-{{ reserva.cabaña.estado }}">
+                {{ reserva.cabaña.get_estado_display }}
+            </span>
+        </p>
+        <p><strong>Progreso:</strong> {{ porcentaje_completado }}%</p>
     </div>
 </div>
 
+{% if reportes_faltantes_pendientes %}
+<div class="card alert alert-danger">
+    <h3>Reportes de Faltantes Pendientes</h3>
+    <p><strong>ATENCIÓN:</strong> Esta cabaña tiene reportes de faltantes críticos pendientes. No se puede marcar como LISTA hasta que se resuelvan.</p>
+    <ul>
+        {% for reporte in reportes_faltantes_pendientes %}
+        <li>
+            <strong>Reporte #{{ reporte.idReporte }}</strong> - {{ reporte.fecha_creacion|date:"d/m/Y H:i" }}
+            <br>{{ reporte.descripcion|truncatewords:20 }}
+            <br><small>Estado: {{ reporte.get_estado_display }}</small>
+        </li>
+        {% endfor %}
+    </ul>
+</div>
+{% endif %}
 
 <form method="post">
     {% csrf_token %}
@@ -92,21 +113,131 @@
     {% endfor %}
 
     <div class="card">
+        <h3>Verificación de Inventario</h3>
+        <p class="alert alert-info">Verifica el inventario de la cabaña. Marca cada item como verificado y registra la cantidad actual.</p>
+
+        {% if verificaciones_inventario %}
+        <table>
+            <thead>
+                <tr>
+                    <th>✓</th>
+                    <th>Item</th>
+                    <th>Cantidad</th>
+                    <th>Estado</th>
+                    <th>Observaciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for verificacion in verificaciones_inventario %}
+                <tr class="{% if verificacion.verificado %}item-completado{% else %}item-pendiente{% endif %}">
+                    <td>
+                        <input type="checkbox"
+                               name="inventario_verificado_{{ verificacion.item.idChecklist }}"
+                               {% if verificacion.verificado %}checked{% endif %}
+                               id="inv_{{ verificacion.item.idChecklist }}">
+                    </td>
+                    <td>
+                        <label for="inv_{{ verificacion.item.idChecklist }}" style="cursor: pointer;">
+                            <strong>• {{ verificacion.item.nombre_item }}</strong>
+                        </label>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 5px;">
+                            <input type="number"
+                                   name="inventario_cantidad_{{ verificacion.item.idChecklist }}"
+                                   value="{{ verificacion.cantidad_actual }}"
+                                   min="0"
+                                   class="form-control"
+                                   style="width: 70px;"
+                                   id="cantidad_{{ verificacion.item.idChecklist }}"
+                                   data-item-id="{{ verificacion.item.idChecklist }}"
+                                   data-cantidad-esperada="{{ verificacion.cantidad_esperada }}"
+                                   onchange="actualizarEstadoInventario(this)">
+                            <span style="font-weight: bold;">/ {{ verificacion.cantidad_esperada }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                            <select name="inventario_estado_{{ verificacion.item.idChecklist }}"
+                                    id="estado_{{ verificacion.item.idChecklist }}"
+                                    class="form-control"
+                                    style="width: 140px;"
+                                    data-item-id="{{ verificacion.item.idChecklist }}"
+                                    data-cantidad-esperada="{{ verificacion.cantidad_esperada }}"
+                                    onchange="actualizarBadgeEstado(this)">
+                                <option value="completo" {% if verificacion.estado_item == 'completo' %}selected{% endif %}>Completo</option>
+                                <option value="faltante" {% if verificacion.estado_item == 'faltante' %}selected{% endif %}>Faltante</option>
+                                <option value="no_funciona" {% if verificacion.estado_item == 'no_funciona' %}selected{% endif %}>No Funciona</option>
+                            </select>
+                            <div id="badge_estado_{{ verificacion.item.idChecklist }}">
+                                {% if verificacion.estado_item == 'no_funciona' %}
+                                    <span class="badge badge-warning">NO FUNCIONA</span>
+                                {% elif verificacion.cantidad_actual >= verificacion.cantidad_esperada %}
+                                    <span class="badge badge-success">COMPLETO</span>
+                                {% else %}
+                                    <span class="badge badge-danger">FALTAN {{ verificacion.cantidad_esperada|add:"-"|add:verificacion.cantidad_actual }}</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text"
+                               name="inventario_obs_{{ verificacion.item.idChecklist }}"
+                               value="{{ verificacion.observaciones }}"
+                               placeholder="Observaciones..."
+                               class="form-control"
+                               style="width: 200px;">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p class="alert alert-warning">No hay items de inventario configurados para esta cabaña. Contacta al administrador.</p>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <h3>Observaciones Generales</h3>
         <div class="form-group">
-            <label for="observaciones"><strong>Observaciones Generales:</strong></label>
-            <textarea name="observaciones" id="observaciones" rows="4" class="form-control">{{ preparacion.observaciones }}</textarea>
+            <label for="observaciones">Notas adicionales sobre la preparación:</label>
+            <textarea name="observaciones" id="observaciones" rows="4" class="form-control" placeholder="Escribe aquí cualquier observación adicional sobre la preparación...">{{ preparacion.observaciones }}</textarea>
         </div>
     </div>
 
     <div class="card">
-        <button type="submit" class="btn btn-primary">Guardar Progreso</button>
+        <h3>Reportar Faltantes o Problemas</h3>
+        <p class="alert alert-warning">Si detectas faltantes críticos o problemas que impiden que la cabaña esté lista, crea un reporte para que el administrador lo atienda.</p>
+        <div class="form-group">
+            <label for="descripcion_faltantes"><strong>Descripción del Problema:</strong></label>
+            <textarea name="descripcion_faltantes" id="descripcion_faltantes" rows="4" class="form-control" placeholder="Ej: Faltan 2 toallas, tetera eléctrica no calienta, necesita reemplazo..."></textarea>
+        </div>
+        <div class="form-group">
+            <label>
+                <input type="checkbox" name="faltantes_criticos" id="faltantes_criticos">
+                <strong>Faltantes Críticos</strong> (bloquean que la cabaña esté LISTA hasta que se resuelvan)
+            </label>
+        </div>
+        <button type="submit" name="accion" value="crear_reporte_faltantes" class="btn btn-danger">Enviar Reporte al Administrador</button>
+    </div>
 
-        <button type="submit" name="completar_preparacion" class="btn btn-success" style="margin-left: 10px;">
-            Completar Preparación e Ir al Checklist de Entrega
-        </button>
+    <div class="card">
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <button type="submit" class="btn btn-primary">Guardar Progreso</button>
 
-        <a href="{% url 'preparar_cabañas' %}" class="btn btn-secondary" style="margin-left: 10px;">Volver a Preparar Cabañas</a>
-        <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+            {% if not tiene_faltantes_criticos %}
+            <button type="submit" name="completar_preparacion" class="btn btn-success">
+                Completar Preparación e Ir al Checklist de Entrega
+            </button>
+            {% else %}
+            <button type="button" class="btn btn-success" style="opacity: 0.5; cursor: not-allowed;" disabled>
+                No se puede completar (hay faltantes críticos pendientes)
+            </button>
+            {% endif %}
+
+            <a href="{% url 'preparar_cabañas' %}" class="btn btn-secondary">← Volver a Preparar Cabañas</a>
+            <a href="{% url 'dashboard_encargado' %}" class="btn">Dashboard</a>
+        </div>
     </div>
 </form>
 
@@ -118,5 +249,46 @@
     background-color: #fff8f0;
 }
 </style>
+
+<script>
+function actualizarEstadoInventario(inputElement) {
+    const itemId = inputElement.getAttribute('data-item-id');
+    const cantidadEsperada = parseInt(inputElement.getAttribute('data-cantidad-esperada')) || 0;
+    const cantidadInput = document.getElementById(`cantidad_${itemId}`);
+    const estadoSelect = document.getElementById(`estado_${itemId}`);
+    const badgeDiv = document.getElementById(`badge_estado_${itemId}`);
+
+    const cantidadActual = parseInt(cantidadInput.value) || 0;
+
+    // Si la cantidad es menor a la esperada, cambiar automáticamente a faltante
+    if (cantidadActual < cantidadEsperada && estadoSelect.value === 'completo') {
+        estadoSelect.value = 'faltante';
+    }
+
+    actualizarBadgeEstado(estadoSelect);
+}
+
+function actualizarBadgeEstado(selectElement) {
+    const itemId = selectElement.getAttribute('data-item-id');
+    const cantidadEsperada = parseInt(selectElement.getAttribute('data-cantidad-esperada')) || 0;
+    const cantidadInput = document.getElementById(`cantidad_${itemId}`);
+    const badgeDiv = document.getElementById(`badge_estado_${itemId}`);
+
+    const cantidadActual = parseInt(cantidadInput.value) || 0;
+    const estado = selectElement.value;
+
+    let badgeHtml = '';
+    if (estado === 'no_funciona') {
+        badgeHtml = '<span class="badge badge-warning">NO FUNCIONA</span>';
+    } else if (cantidadActual >= cantidadEsperada) {
+        badgeHtml = '<span class="badge badge-success">COMPLETO</span>';
+    } else {
+        const faltantes = cantidadEsperada - cantidadActual;
+        badgeHtml = `<span class="badge badge-danger">FALTAN ${faltantes}</span>`;
+    }
+
+    badgeDiv.innerHTML = badgeHtml;
+}
+</script>
 {% endblock %}
 

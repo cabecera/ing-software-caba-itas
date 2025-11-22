@@ -16,21 +16,22 @@
                 {% if user.is_authenticated %}
                     {% if user.is_staff %}
                         <li><a href="{% url 'dashboard_admin' %}">Dashboard</a></li>
+                        <li><a href="{% url 'calendario_disponibilidad' %}">Calendario</a></li>
                         <li><a href="{% url 'gestion_reservas' %}">Reservas</a></li>
-                        <li><a href="{% url 'registro_pagos' %}">Pagos</a></li>
-                        <li><a href="{% url 'reportes_generales' %}">Reportes</a></li>
+                        <li><a href="{% url 'gestion_cabañas' %}">Cabañas</a></li>
                         <li><a href="{% url 'gestion_clientes' %}">Clientes</a></li>
-                        <li><a href="{% url 'gestion_incidentes' %}">Incidentes</a></li>
-                        <li><a href="{% url 'historial_entregas' %}">Entregas</a></li>
+                        <li><a href="{% url 'registro_pagos' %}">Pagos</a></li>
+                        <li><a href="{% url 'atender_reportes_faltantes' %}">Reportes Faltantes</a></li>
+                        <li><a href="{% url 'panel_notificaciones' %}">Notificaciones</a></li>
                         <li><a href="/admin/">Admin Django</a></li>
                     {% elif user.groups.all %}
                         {% for group in user.groups.all %}
                             {% if group.name == 'Encargados' %}
                                 <li><a href="{% url 'dashboard_encargado' %}">Dashboard</a></li>
+                                <li><a href="{% url 'preparar_cabañas' %}">Preparar Cabañas</a></li>
                                 <li><a href="{% url 'inventario_cabañas' %}">Inventario</a></li>
-                                <li><a href="{% url 'gestion_mantenimiento' %}">Mantenimiento</a></li>
-                                <li><a href="{% url 'prestamos_implementos' %}">Préstamos</a></li>
-                                <li><a href="{% url 'estado_cabañas' %}">Cabañas</a></li>
+                                <li><a href="{% url 'reporte_faltantes' %}">Faltantes</a></li>
+                                <li><a href="{% url 'notificaciones_encargado' %}">Notificaciones</a></li>
                             {% endif %}
                         {% endfor %}
                     {% endif %}

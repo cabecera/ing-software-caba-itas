@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block title %}Notificaciones Recibidas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Notificaciones Recibidas</h1>
+
+<div class="stats" style="margin-bottom: 20px;">
+    <div class="stat-card">
+        <h4>{{ total_notificaciones }}</h4>
+        <p>Total Notificaciones</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ notificaciones_no_leidas }}</h4>
+        <p>No Leídas</p>
+    </div>
+</div>
+
+<div class="mb-20">
+    <form method="get" class="inline-block-form">
+        <select name="tipo" onchange="this.form.submit()">
+            <option value="">Todos los tipos</option>
+            <option value="alerta" {% if tipo_filtro == 'alerta' %}selected{% endif %}>Alerta</option>
+            <option value="recordatorio" {% if tipo_filtro == 'recordatorio' %}selected{% endif %}>Recordatorio</option>
+            <option value="general" {% if tipo_filtro == 'general' %}selected{% endif %}>General</option>
+            <option value="preparacion" {% if tipo_filtro == 'preparacion' %}selected{% endif %}>Preparación</option>
+        </select>
+        <select name="leida" onchange="this.form.submit()" style="margin-left: 10px;">
+            <option value="">Todas</option>
+            <option value="false" {% if leida_filtro == 'false' %}selected{% endif %}>No Leídas</option>
+            <option value="true" {% if leida_filtro == 'true' %}selected{% endif %}>Leídas</option>
+        </select>
+    </form>
+</div>
+
+{% if notificaciones %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Tipo</th>
+                <th>Mensaje</th>
+                <th>Fecha</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for notif in notificaciones %}
+            <tr class="{% if not notif.leida %}notificacion-no-leida{% endif %}">
+                <td>#{{ notif.idNotificacion }}</td>
+                <td>{{ notif.get_tipo_display }}</td>
+                <td>{{ notif.mensaje }}</td>
+                <td>{{ notif.fechaEnvio|date:"d/m/Y H:i" }}</td>
+                <td>
+                    {% if notif.leida %}
+                        <span class="status-badge-inline" style="background-color: #d4edda;">Leída</span>
+                    {% else %}
+                        <span class="status-badge-inline" style="background-color: #f8d7da;">No Leída</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if notif.leida %}
+                        <form method="post" style="display: inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="notificacion_id" value="{{ notif.idNotificacion }}">
+                            <input type="hidden" name="accion" value="marcar_no_leida">
+                            <button type="submit" class="btn btn-sm">Marcar No Leída</button>
+                        </form>
+                    {% else %}
+                        <form method="post" style="display: inline-block;">
+                            {% csrf_token %}
+                            <input type="hidden" name="notificacion_id" value="{{ notif.idNotificacion }}">
+                            <input type="hidden" name="accion" value="marcar_leida">
+                            <button type="submit" class="btn btn-sm btn-success">Marcar Leída</button>
+                        </form>
+                    {% endif %}
+                    <form method="post" style="display: inline-block; margin-left: 5px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="notificacion_id" value="{{ notif.idNotificacion }}">
+                        <input type="hidden" name="accion" value="eliminar">
+                        <button type="submit" class="btn btn-sm btn-danger" onclick="return confirm('¿Eliminar esta notificación?')">Eliminar</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No hay notificaciones con los filtros seleccionados.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+
+<style>
+.notificacion-no-leida {
+    background-color: #fff3cd;
+}
+</style>
+{% endblock %}
+

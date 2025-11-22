@@ -6,11 +6,13 @@ from django.contrib import messages
 from django.db.models import Q, Count, Sum, F
 from django.utils import timezone
 from datetime import timedelta, date
+from calendar import monthrange
 from .models import (
     Cliente, Reserva, Cabaña, Encuesta, Pago,
     Implemento, PrestamoImplemento, Mantenimiento, Notificacion,
-    ChecklistInventario, EntregaCabaña, ItemFaltante, ItemVerificacion,
-    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado
+    ChecklistInventario, EntregaCabaña, ItemVerificacion,
+    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado, ReporteFaltantes,
+    VerificacionInventarioPreparacion
 )
 from .forms import (
     RegistroClienteForm, ReservaForm, EncuestaForm, PagoForm,
@@ -1166,5 +1168,315 @@ def gestion_incidentes(request):
         'mantenimientos_activos': mantenimientos_activos,
         'reservas_afectadas': reservas_afectadas,
         'cabañas_disponibles': cabañas_disponibles
+    })
+
+
+@administrador_required
+def calendario_disponibilidad(request):
+    """Calendario de disponibilidad de cabañas"""
+    hoy = timezone.now().date()
+
+    # Obtener mes y año de la request
+    mes = int(request.GET.get('mes', hoy.month))
+    año = int(request.GET.get('año', hoy.year))
+
+    # Calcular días del mes
+    dias_mes = monthrange(año, mes)[1]
+
+    # Nombres de meses
+    meses = ['', 'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+             'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre']
+    mes_nombre = meses[mes]
+
+    # Calcular mes anterior y siguiente
+    if mes == 1:
+        mes_anterior = 12
+        año_anterior = año - 1
+    else:
+        mes_anterior = mes - 1
+        año_anterior = año
+
+    if mes == 12:
+        mes_siguiente = 1
+        año_siguiente = año + 1
+    else:
+        mes_siguiente = mes + 1
+        año_siguiente = año
+
+    # Obtener todas las cabañas
+    cabañas = Cabaña.objects.all().order_by('nombre')
+
+    # Obtener reservas del mes
+    fecha_inicio_mes = date(año, mes, 1)
+    fecha_fin_mes = date(año, mes, dias_mes)
+
+    reservas = Reserva.objects.filter(
+        fechaInicio__lte=fecha_fin_mes,
+        fechaFin__gte=fecha_inicio_mes,
+        estado__in=['confirmada', 'pendiente']
+    ).select_related('cabaña', 'cliente')
+
+    # Obtener mantenimientos del mes
+    mantenimientos = Mantenimiento.objects.filter(
+        fechaProgramada__lte=fecha_fin_mes,
+        fechaProgramada__gte=fecha_inicio_mes,
+        estado__in=['programado', 'en_proceso']
+    ).select_related('cabaña')
+
+    # Construir datos del calendario
+    calendario_data = []
+    for cabaña in cabañas:
+        fila = {
+            'cabaña': cabaña,
+            'dias': []
+        }
+
+        for dia in range(1, dias_mes + 1):
+            fecha_dia = date(año, mes, dia)
+            dia_info = {
+                'estado': 'disponible',
+                'es_hoy': fecha_dia == hoy,
+                'reserva': None
+            }
+
+            # Verificar si hay reserva
+            for reserva in reservas:
+                if reserva.cabaña == cabaña and reserva.fechaInicio <= fecha_dia <= reserva.fechaFin:
+                    dia_info['estado'] = 'reservada'
+                    dia_info['reserva'] = reserva
+                    break
+
+            # Verificar si hay mantenimiento
+            if dia_info['estado'] == 'disponible':
+                for mantenimiento in mantenimientos:
+                    if mantenimiento.cabaña == cabaña and mantenimiento.fechaProgramada == fecha_dia:
+                        dia_info['estado'] = 'mantenimiento'
+                        break
+
+            fila['dias'].append(dia_info)
+
+        calendario_data.append(fila)
+
+    return render(request, 'admin/calendario_disponibilidad.html', {
+        'calendario_data': calendario_data,
+        'mes': mes,
+        'año': año,
+        'mes_nombre': mes_nombre,
+        'dias_mes': dias_mes,
+        'mes_anterior': mes_anterior,
+        'año_anterior': año_anterior,
+        'mes_siguiente': mes_siguiente,
+        'año_siguiente': año_siguiente,
+    })
+
+
+@administrador_required
+def gestion_cabañas(request):
+    """Gestión de cabañas"""
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        cabaña_id = request.POST.get('cabaña_id')
+        cabaña = get_object_or_404(Cabaña, idCabaña=cabaña_id)
+
+        if accion == 'cambiar_estado':
+            nuevo_estado = request.POST.get('estado')
+            cabaña.estado = nuevo_estado
+            cabaña.save()
+            messages.success(request, f'Estado de {cabaña.nombre} actualizado.')
+        elif accion == 'actualizar_precio':
+            nuevo_precio = request.POST.get('precio')
+            try:
+                cabaña.precioNoche = float(nuevo_precio)
+                cabaña.save()
+                messages.success(request, f'Precio de {cabaña.nombre} actualizado.')
+            except ValueError:
+                messages.error(request, 'Precio inválido.')
+
+        return redirect('gestion_cabañas')
+
+    cabañas = Cabaña.objects.all().order_by('nombre')
+    return render(request, 'admin/gestion_cabañas.html', {'cabañas': cabañas})
+
+
+@administrador_required
+def panel_notificaciones(request):
+    """Panel de notificaciones del administrador"""
+    tipo_filtro = request.GET.get('tipo', '')
+    leida_filtro = request.GET.get('leida', '')
+
+    notificaciones = Notificacion.objects.all().order_by('-fechaEnvio')
+
+    if tipo_filtro:
+        notificaciones = notificaciones.filter(tipo=tipo_filtro)
+
+    if leida_filtro == 'true':
+        notificaciones = notificaciones.filter(leida=True)
+    elif leida_filtro == 'false':
+        notificaciones = notificaciones.filter(leida=False)
+
+    total_notificaciones = Notificacion.objects.count()
+    notificaciones_no_leidas = Notificacion.objects.filter(leida=False).count()
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        notificacion_id = request.POST.get('notificacion_id')
+        notificacion = get_object_or_404(Notificacion, idNotificacion=notificacion_id)
+
+        if accion == 'marcar_leida':
+            notificacion.leida = True
+            notificacion.save()
+            messages.success(request, 'Notificación marcada como leída.')
+        elif accion == 'marcar_no_leida':
+            notificacion.leida = False
+            notificacion.save()
+            messages.success(request, 'Notificación marcada como no leída.')
+        elif accion == 'eliminar':
+            notificacion.delete()
+            messages.success(request, 'Notificación eliminada.')
+
+        return redirect('panel_notificaciones')
+
+    return render(request, 'admin/panel_notificaciones.html', {
+        'notificaciones': notificaciones,
+        'total_notificaciones': total_notificaciones,
+        'notificaciones_no_leidas': notificaciones_no_leidas,
+        'tipo_filtro': tipo_filtro,
+        'leida_filtro': leida_filtro,
+    })
+
+
+@administrador_required
+def atender_reportes_faltantes(request):
+    """Atender reportes de faltantes"""
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        reporte_id = request.POST.get('reporte_id')
+        reporte = get_object_or_404(ReporteFaltantes, idReporte=reporte_id)
+
+        if accion == 'marcar_atendido':
+            observaciones = request.POST.get('observaciones_atencion', '')
+            reporte.marcar_atendido(request.user)
+            reporte.observaciones_atencion = observaciones
+            reporte.save()
+
+            # Si no son críticos, cambiar estado de cabaña a 'en_preparacion'
+            if not reporte.faltantes_criticos and reporte.cabaña.estado == 'pendiente':
+                reporte.cabaña.estado = 'en_preparacion'
+                reporte.cabaña.save()
+
+            messages.success(request, 'Reporte marcado como atendido.')
+        elif accion == 'marcar_resuelto':
+            reporte.marcar_resuelto()
+            # Cambiar estado de cabaña a 'lista' si no hay otros reportes críticos
+            otros_reportes_criticos = ReporteFaltantes.objects.filter(
+                cabaña=reporte.cabaña,
+                estado__in=['pendiente', 'atendido'],
+                faltantes_criticos=True
+            ).exclude(idReporte=reporte.idReporte)
+
+            if not otros_reportes_criticos.exists():
+                reporte.cabaña.estado = 'lista'
+                reporte.cabaña.save()
+
+            messages.success(request, 'Reporte marcado como resuelto.')
+
+        return redirect('atender_reportes_faltantes')
+
+    reportes_pendientes = ReporteFaltantes.objects.filter(
+        estado__in=['pendiente', 'atendido']
+    ).select_related('cabaña', 'encargado', 'administrador_atendio', 'preparacion').order_by('-fecha_creacion')
+
+    return render(request, 'admin/atender_reportes_faltantes.html', {
+        'reportes_pendientes': reportes_pendientes
+    })
+
+
+@encargado_required
+def reporte_faltantes(request):
+    """Reporte de faltantes de inventario"""
+    implementos_faltantes = Implemento.objects.filter(
+        Q(cantidadDisponible=0) | Q(cantidadDisponible__lt=F('cantidadTotal') * 0.2)
+    ).order_by('cantidadDisponible')
+
+    items_faltantes_raw = ItemVerificacion.objects.filter(
+        cantidad_devuelta__lt=F('cantidad_entregada')
+    ).select_related('entrega', 'item', 'entrega__reserva', 'entrega__reserva__cabaña').order_by('-entrega__fecha_devolucion')
+
+    items_faltantes = []
+    for item in items_faltantes_raw:
+        faltantes = item.cantidad_entregada - item.cantidad_devuelta
+        if faltantes > 0:
+            items_faltantes.append({
+                'item': item,
+                'faltantes': faltantes
+            })
+
+    items_faltantes_modelo = ReporteFaltantes.objects.filter(estado__in=['pendiente', 'atendido']).select_related(
+        'cabaña', 'preparacion', 'encargado'
+    ).order_by('-fecha_creacion')
+
+    total_implementos_faltantes = implementos_faltantes.count()
+    total_items_faltantes = len(items_faltantes) + items_faltantes_modelo.count()
+
+    valor_reposicion = 0
+    for item_data in items_faltantes:
+        item_ver = item_data['item']
+        if item_ver.item and hasattr(item_ver.item, 'precio_reposicion') and item_ver.item.precio_reposicion:
+            valor_reposicion += item_data['faltantes'] * float(item_ver.item.precio_reposicion)
+
+    return render(request, 'encargado/reporte_faltantes.html', {
+        'implementos_faltantes': implementos_faltantes,
+        'items_faltantes': items_faltantes,
+        'items_faltantes_modelo': items_faltantes_modelo,
+        'total_implementos_faltantes': total_implementos_faltantes,
+        'total_items_faltantes': total_items_faltantes,
+        'valor_reposicion': valor_reposicion
+    })
+
+
+@encargado_required
+def notificaciones_encargado(request):
+    """Notificaciones recibidas por el encargado"""
+    tipo_filtro = request.GET.get('tipo', '')
+    leida_filtro = request.GET.get('leida', '')
+
+    notificaciones = Notificacion.objects.filter(usuario=request.user).order_by('-fechaEnvio')
+
+    if tipo_filtro:
+        notificaciones = notificaciones.filter(tipo=tipo_filtro)
+
+    if leida_filtro == 'true':
+        notificaciones = notificaciones.filter(leida=True)
+    elif leida_filtro == 'false':
+        notificaciones = notificaciones.filter(leida=False)
+
+    total_notificaciones = Notificacion.objects.filter(usuario=request.user).count()
+    notificaciones_no_leidas = Notificacion.objects.filter(usuario=request.user, leida=False).count()
+
+    if request.method == 'POST':
+        accion = request.POST.get('accion')
+        notificacion_id = request.POST.get('notificacion_id')
+        notificacion = get_object_or_404(Notificacion, idNotificacion=notificacion_id, usuario=request.user)
+
+        if accion == 'marcar_leida':
+            notificacion.leida = True
+            notificacion.save()
+            messages.success(request, 'Notificación marcada como leída.')
+        elif accion == 'marcar_no_leida':
+            notificacion.leida = False
+            notificacion.save()
+            messages.success(request, 'Notificación marcada como no leída.')
+        elif accion == 'eliminar':
+            notificacion.delete()
+            messages.success(request, 'Notificación eliminada.')
+
+        return redirect('notificaciones_encargado')
+
+    return render(request, 'encargado/notificaciones_encargado.html', {
+        'notificaciones': notificaciones,
+        'total_notificaciones': total_notificaciones,
+        'notificaciones_no_leidas': notificaciones_no_leidas,
+        'tipo_filtro': tipo_filtro,
+        'leida_filtro': leida_filtro,
     })
 

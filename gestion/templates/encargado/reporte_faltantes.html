@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+
+{% block title %}Reporte de Faltantes - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Reporte de Faltantes</h1>
+
+<div class="stats" style="margin-bottom: 20px;">
+    <div class="stat-card">
+        <h4>{{ total_implementos_faltantes }}</h4>
+        <p>Implementos con Faltantes</p>
+    </div>
+    <div class="stat-card">
+        <h4>{{ total_items_faltantes }}</h4>
+        <p>Items Faltantes</p>
+    </div>
+    <div class="stat-card">
+        <h4>${{ valor_reposicion|floatformat:2 }}</h4>
+        <p>Valor de Reposición</p>
+    </div>
+</div>
+
+<div class="card">
+    <h3>Implementos con Bajo Stock o Agotados</h3>
+    {% if implementos_faltantes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>Descripción</th>
+                    <th>Disponible</th>
+                    <th>Total</th>
+                    <th>Porcentaje</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for implemento in implementos_faltantes %}
+                <tr>
+                    <td>{{ implemento.nombre }}</td>
+                    <td>{{ implemento.descripcion|truncatewords:10 }}</td>
+                    <td>{{ implemento.cantidadDisponible }}</td>
+                    <td>{{ implemento.cantidadTotal }}</td>
+                    <td>
+                        {% widthratio implemento.cantidadDisponible implemento.cantidadTotal 100 %}%
+                    </td>
+                    <td>
+                        <span class="status-badge-inline status-{{ implemento.estado }}">
+                            {{ implemento.get_estado_display }}
+                        </span>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay implementos con faltantes actualmente.</p>
+    {% endif %}
+</div>
+
+<div class="card">
+    <h3>Items Faltantes de Entregas</h3>
+    {% if items_faltantes %}
+        <table>
+            <thead>
+                <tr>
+                    <th>Reserva</th>
+                    <th>Cabaña</th>
+                    <th>Item</th>
+                    <th>Cantidad Entregada</th>
+                    <th>Cantidad Devuelta</th>
+                    <th>Faltantes</th>
+                    <th>Fecha Devolución</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item_data in items_faltantes %}
+                <tr>
+                    <td>#{{ item_data.item.entrega.reserva.idReserva }}</td>
+                    <td>{{ item_data.item.entrega.reserva.cabaña.nombre }}</td>
+                    <td>{{ item_data.item.item.nombre_item }}</td>
+                    <td>{{ item_data.item.cantidad_entregada }}</td>
+                    <td>{{ item_data.item.cantidad_devuelta }}</td>
+                    <td><strong>{{ item_data.faltantes }}</strong></td>
+                    <td>{{ item_data.item.entrega.fecha_devolucion|date:"d/m/Y"|default:"N/A" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p>No hay items faltantes registrados en entregas.</p>
+    {% endif %}
+</div>
+
+{% if items_faltantes_modelo %}
+<div class="card">
+    <h3>Items Faltantes Registrados</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Reserva</th>
+                <th>Cabaña</th>
+                <th>Item</th>
+                <th>Cantidad Faltante</th>
+                <th>Fecha</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items_faltantes_modelo %}
+            <tr>
+                <td>#{{ item.entrega.reserva.idReserva }}</td>
+                <td>{{ item.entrega.reserva.cabaña.nombre }}</td>
+                <td>{{ item.item_checklist.nombre_item }}</td>
+                <td><strong>{{ item.cantidad_faltante }}</strong></td>
+                <td>{{ item.entrega.fecha_devolucion|date:"d/m/Y"|default:"N/A" }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_encargado' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

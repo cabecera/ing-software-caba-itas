@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block title %}Gestión de Cabañas - Las Cabañitas{% endblock %}
+
+{% block content %}
+<h1 class="page-title">Gestión de Cabañas</h1>
+
+{% if cabañas %}
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nombre</th>
+                <th>Capacidad</th>
+                <th>Precio/Noche</th>
+                <th>Estado</th>
+                <th>Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cabaña in cabañas %}
+            <tr>
+                <td>#{{ cabaña.idCabaña }}</td>
+                <td>{{ cabaña.nombre }}</td>
+                <td>{{ cabaña.capacidad }} personas</td>
+                <td>${{ cabaña.precioNoche }}</td>
+                <td>
+                    <span class="status-badge-inline status-{{ cabaña.estado }}">
+                        {{ cabaña.get_estado_display }}
+                    </span>
+                </td>
+                <td>
+                    <form method="post" style="display: inline-block;">
+                        {% csrf_token %}
+                        <input type="hidden" name="cabaña_id" value="{{ cabaña.idCabaña }}">
+                        <input type="hidden" name="accion" value="cambiar_estado">
+                        <select name="estado" onchange="this.form.submit()" style="padding: 5px;">
+                            <option value="disponible" {% if cabaña.estado == 'disponible' %}selected{% endif %}>Disponible</option>
+                            <option value="ocupada" {% if cabaña.estado == 'ocupada' %}selected{% endif %}>Ocupada</option>
+                            <option value="mantenimiento" {% if cabaña.estado == 'mantenimiento' %}selected{% endif %}>En Mantenimiento</option>
+                            <option value="reservada" {% if cabaña.estado == 'reservada' %}selected{% endif %}>Reservada</option>
+                        </select>
+                    </form>
+                    <form method="post" style="display: inline-block; margin-left: 10px;">
+                        {% csrf_token %}
+                        <input type="hidden" name="cabaña_id" value="{{ cabaña.idCabaña }}">
+                        <input type="hidden" name="accion" value="actualizar_precio">
+                        <input type="number" name="precio" value="{{ cabaña.precioNoche }}" step="0.01" min="0" style="width: 100px; padding: 5px;">
+                        <button type="submit" class="btn btn-primary" style="padding: 5px 10px;">Actualizar Precio</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+{% else %}
+    <div class="card">
+        <p>No hay cabañas registradas.</p>
+    </div>
+{% endif %}
+
+<div class="mt-30">
+    <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
+</div>
+{% endblock %}
+

@@ -26,7 +26,21 @@
         <h4>{{ tasa_ocupacion|floatformat:1 }}%</h4>
         <p>Tasa de Ocupación</p>
     </div>
+    {% if reportes_faltantes_pendientes > 0 %}
+    <div class="stat-card" style="background-color: #fff3cd; border: 2px solid #ffc107;">
+        <h4>{{ reportes_faltantes_pendientes }}</h4>
+        <p>🚨 Reportes Faltantes Pendientes</p>
+    </div>
+    {% endif %}
 </div>
+
+{% if reportes_faltantes_pendientes > 0 %}
+<div class="card alert alert-warning">
+    <h3>🚨 Reportes de Faltantes Pendientes</h3>
+    <p>Hay <strong>{{ reportes_faltantes_pendientes }}</strong> reporte{{ reportes_faltantes_pendientes|pluralize }} de faltantes pendiente{{ reportes_faltantes_pendientes|pluralize }} de atención.</p>
+    <a href="{% url 'atender_reportes_faltantes' %}" class="btn btn-warning">Ver y Atender Reportes</a>
+</div>
+{% endif %}
 
 <div class="card">
     <h3>Reservas Recientes</h3>
@@ -68,9 +82,12 @@
 </div>
 
 <div class="mt-30">
+    <a href="{% url 'calendario_disponibilidad' %}" class="btn">Calendario de Disponibilidad</a>
     <a href="{% url 'gestion_reservas' %}" class="btn">Ver Todas las Reservas</a>
+    <a href="{% url 'gestion_cabañas' %}" class="btn">Gestión de Cabañas</a>
     <a href="{% url 'registro_pagos' %}" class="btn">Registrar Pago</a>
-    <a href="{% url 'reportes_generales' %}" class="btn">Ver Reportes</a>
+    <a href="{% url 'atender_reportes_faltantes' %}" class="btn {% if reportes_faltantes_pendientes > 0 %}btn-warning{% endif %}">Reportes Faltantes{% if reportes_faltantes_pendientes > 0 %} ({{ reportes_faltantes_pendientes }}){% endif %}</a>
+    <a href="{% url 'panel_notificaciones' %}" class="btn">Panel de Notificaciones</a>
 </div>
 {% endblock %}
 

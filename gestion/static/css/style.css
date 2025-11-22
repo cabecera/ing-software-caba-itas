@@ -626,3 +626,110 @@ table tr:hover {
     }
 }
 
+/* Estilos para Calendario de Disponibilidad */
+.calendario-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.calendario-container {
+    overflow-x: auto;
+}
+
+.calendario-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.calendario-table th {
+    padding: 8px;
+    border: 1px solid #ddd;
+    background-color: #f5f5f5;
+    text-align: center;
+    min-width: 40px;
+}
+
+.calendario-table th.cabana-header {
+    padding: 10px;
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 10;
+}
+
+.calendario-table td {
+    padding: 5px;
+    border: 1px solid #ddd;
+    text-align: center;
+}
+
+.calendario-table td.cabana-cell {
+    padding: 10px;
+    font-weight: bold;
+    position: sticky;
+    left: 0;
+    background: white;
+    z-index: 5;
+}
+
+.calendario-dia-disponible {
+    background-color: #d4edda;
+}
+
+.calendario-dia-reservada {
+    background-color: #fff3cd;
+}
+
+.calendario-dia-mantenimiento {
+    background-color: #f8d7da;
+}
+
+.calendario-dia-hoy {
+    border: 2px solid #007bff !important;
+}
+
+.calendario-leyenda {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f5f5f5;
+    border-radius: 5px;
+}
+
+.calendario-leyenda-items {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.calendario-leyenda-item {
+    display: flex;
+    align-items: center;
+}
+
+.calendario-leyenda-color {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 1px solid #ddd;
+    margin-right: 5px;
+}
+
+.calendario-leyenda-color.disponible {
+    background-color: #d4edda;
+}
+
+.calendario-leyenda-color.reservada {
+    background-color: #fff3cd;
+}
+
+.calendario-leyenda-color.mantenimiento {
+    background-color: #f8d7da;
+}
+
+.calendario-leyenda-color.hoy {
+    border: 2px solid #007bff;
+    background-color: transparent;
+}
+

@@ -117,10 +117,10 @@ class Command(BaseCommand):
 
         # Crear cabañas de ejemplo
         cabañas_data = [
-            {'nombre': 'Cabaña del Bosque', 'capacidad': 4, 'precioNoche': 50000, 'estado': 'disponible'},
-            {'nombre': 'Cabaña del Lago', 'capacidad': 6, 'precioNoche': 75000, 'estado': 'disponible'},
-            {'nombre': 'Cabaña Familiar', 'capacidad': 8, 'precioNoche': 100000, 'estado': 'disponible'},
-            {'nombre': 'Cabaña Rústica', 'capacidad': 2, 'precioNoche': 35000, 'estado': 'disponible'},
+            {'nombre': 'Cabaña del Bosque', 'capacidad': 4, 'precioNoche': 50000, 'estado': 'lista'},
+            {'nombre': 'Cabaña del Lago', 'capacidad': 6, 'precioNoche': 75000, 'estado': 'lista'},
+            {'nombre': 'Cabaña Familiar', 'capacidad': 8, 'precioNoche': 100000, 'estado': 'lista'},
+            {'nombre': 'Cabaña Rústica', 'capacidad': 2, 'precioNoche': 35000, 'estado': 'lista'},
         ]
 
         for cab_data in cabañas_data:
