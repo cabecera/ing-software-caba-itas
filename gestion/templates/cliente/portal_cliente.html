@@ -49,20 +49,41 @@
 </div>
 
 <div class="card">
-    <h3>Notificaciones</h3>
+    <h3>Notificaciones {% if notificaciones %}({{ notificaciones|length }}){% endif %}</h3>
     {% if notificaciones %}
-        <ul>
+        <ul style="list-style: none; padding: 0;">
             {% for notif in notificaciones %}
-            <li class="notification-item">
-                <strong>{{ notif.get_tipo_display }}:</strong> {{ notif.mensaje }}
-                <small class="notification-date">{{ notif.fechaEnvio|date:"d/m/Y H:i" }}</small>
+            <li class="notification-item {% if not notif.leida %}notification-unread{% endif %}" style="margin-bottom: 10px;">
+                <div style="display: flex; justify-content: space-between; align-items: start;">
+                    <div style="flex: 1;">
+                        <strong>{{ notif.get_tipo_display }}:</strong> {{ notif.mensaje }}
+                        <br><small class="notification-date" style="color: #666;">{{ notif.fechaEnvio|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    {% if not notif.leida %}
+                        <span class="badge badge-warning" style="margin-left: 10px;">Nueva</span>
+                    {% endif %}
+                </div>
             </li>
             {% endfor %}
         </ul>
     {% else %}
-        <p>No tienes notificaciones pendientes.</p>
+        <p>No tienes notificaciones.</p>
     {% endif %}
 </div>
+<style>
+.notification-unread {
+    background-color: #fff3cd;
+    padding: 10px;
+    margin: 5px 0;
+    border-left: 4px solid #ffc107;
+    border-radius: 4px;
+}
+.notification-item {
+    padding: 10px;
+    margin: 5px 0;
+    border-radius: 4px;
+}
+</style>
 
 <div class="mt-30">
     <a href="{% url 'solicitar_reserva' %}" class="btn btn-success">Solicitar Nueva Reserva</a>

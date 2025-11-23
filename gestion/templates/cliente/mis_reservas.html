@@ -85,6 +85,9 @@
                     <span class="status-badge-inline status-{{ reserva.estado }}">
                         {{ reserva.get_estado_display }}
                     </span>
+                    {% if reserva.cabaña.estado == 'lista' and reserva.confirmacion_cliente and reserva.fechaInicio >= hoy %}
+                        <br><span class="badge badge-success" style="margin-top: 5px; display: inline-block;">✓ Cabaña Lista</span>
+                    {% endif %}
                 </td>
                 <td>
                     {% if reserva.confirmacion_cliente %}

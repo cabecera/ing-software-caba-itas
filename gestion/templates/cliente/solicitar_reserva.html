@@ -15,6 +15,12 @@
     <div class="form-group">
         <label for="id_fechaInicio">Fecha de Inicio:</label>
         {{ form.fechaInicio }}
+        {% if fecha_minima %}
+        <small class="form-text" style="color: #856404; display: block; margin-top: 5px;">
+            Debes solicitar la reserva con al menos 4 días de anticipación.
+            Fecha mínima permitida: <strong>{{ fecha_minima|date:"d/m/Y" }}</strong>
+        </small>
+        {% endif %}
     </div>
 
     <div class="form-group">

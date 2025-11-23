@@ -5,6 +5,8 @@ from .models import (
 )
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
+from django.utils import timezone
+from datetime import timedelta
 
 
 class RegistroClienteForm(UserCreationForm):
@@ -37,6 +39,14 @@ class RegistroClienteForm(UserCreationForm):
 
 class ReservaForm(forms.ModelForm):
     """Formulario para solicitar reservas"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Establecer fecha mínima: 4 días después de hoy
+        hoy = timezone.now().date()
+        fecha_minima = hoy + timedelta(days=4)
+        self.fields['fechaInicio'].widget.attrs['min'] = fecha_minima.isoformat()
+        self.fields['fechaFin'].widget.attrs['min'] = fecha_minima.isoformat()
+
     class Meta:
         model = Reserva
         fields = ['cabaña', 'fechaInicio', 'fechaFin', 'numPersonas', 'comentarios']
@@ -45,6 +55,18 @@ class ReservaForm(forms.ModelForm):
             'fechaFin': forms.DateInput(attrs={'type': 'date'}),
             'comentarios': forms.Textarea(attrs={'rows': 3}),
         }
+
+    def clean_fechaInicio(self):
+        fecha_inicio = self.cleaned_data.get('fechaInicio')
+        if fecha_inicio:
+            hoy = timezone.now().date()
+            fecha_minima = hoy + timedelta(days=4)
+            if fecha_inicio < fecha_minima:
+                raise forms.ValidationError(
+                    f'Debes solicitar la reserva con al menos 4 días de anticipación. '
+                    f'La fecha mínima permitida es {fecha_minima.strftime("%d/%m/%Y")}.'
+                )
+        return fecha_inicio
 
 
 class EncuestaForm(forms.ModelForm):

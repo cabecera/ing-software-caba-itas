@@ -634,46 +634,6 @@ class ItemPreparacionCompletado(models.Model):
         ordering = ['tarea__categoria', 'tarea__orden']
 
 
-class VerificacionInventarioPreparacion(models.Model):
-    """Modelo para verificación de inventario durante la preparación"""
-    ESTADOS_ITEM = [
-        ('completo', 'Completo'),
-        ('faltante', 'Faltante'),
-        ('no_funciona', 'No Funciona'),
-    ]
-
-    idVerificacion = models.AutoField(primary_key=True)
-    preparacion = models.ForeignKey(PreparacionCabaña, on_delete=models.CASCADE, related_name='verificaciones_inventario')
-    item = models.ForeignKey(ChecklistInventario, on_delete=models.CASCADE, related_name='verificaciones_preparacion')
-    cantidad_actual = models.IntegerField(default=0, verbose_name='Cantidad Actual')
-    cantidad_esperada = models.IntegerField(verbose_name='Cantidad Esperada')
-    estado_item = models.CharField(max_length=20, choices=ESTADOS_ITEM, default='completo', verbose_name='Estado del Item')
-    verificado = models.BooleanField(default=False, verbose_name='Verificado')
-    observaciones = models.TextField(blank=True, verbose_name='Observaciones')
-
-    def calcular_faltantes(self):
-        """Calcula la cantidad faltante"""
-        if self.estado_item == 'no_funciona':
-            return self.cantidad_esperada
-        return max(0, self.cantidad_esperada - self.cantidad_actual)
-
-    def esta_completo(self):
-        """Verifica si el item está completo"""
-        if self.estado_item == 'no_funciona':
-            return False
-        return self.cantidad_actual >= self.cantidad_esperada
-
-    def __str__(self):
-        return f"{self.item.nombre_item} - {self.cantidad_actual}/{self.cantidad_esperada} - {self.get_estado_item_display()}"
-
-    class Meta:
-        db_table = 'verificacion_inventario_preparacion'
-        verbose_name = "Verificación de Inventario"
-        verbose_name_plural = "Verificaciones de Inventario"
-        unique_together = ['preparacion', 'item']
-        ordering = ['item__categoria', 'item__orden']
-
-
 class ReporteFaltantes(models.Model):
     """Modelo para reportes de faltantes durante la preparación de cabañas"""
     ESTADOS = [

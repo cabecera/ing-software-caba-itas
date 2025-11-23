@@ -6,10 +6,10 @@
 <h1 class="page-title">Preparar Cabañas</h1>
 
 <div class="card">
-    <h3>Reservas Próximas (Próximos 3 días)</h3>
-    <p class="alert alert-info">Las siguientes reservas requieren preparación. Haz clic en "Iniciar Preparación" para comenzar el checklist de preparación.</p>
+    <h3>Reservas que Requieren Preparación</h3>
+    <p class="alert alert-info">Las siguientes reservas confirmadas por el cliente requieren preparación. Haz clic en "Iniciar Preparación" o "Continuar Preparación" para comenzar o continuar el checklist de preparación.</p>
 
-    {% if reservas_proximas %}
+    {% if reservas_con_dias %}
     <table>
         <thead>
             <tr>
@@ -22,14 +22,17 @@
             </tr>
         </thead>
         <tbody>
-            {% for reserva in reservas_proximas %}
+            {% for item in reservas_con_dias %}
+            {% with reserva=item.reserva dias_restantes=item.dias_restantes %}
             <tr>
                 <td>{{ reserva.cliente.nombre }}</td>
                 <td>{{ reserva.cabaña.nombre }}</td>
-                <td>{{ reserva.fechaInicio }}</td>
+                <td>{{ reserva.fechaInicio|date:"d/m/Y" }}</td>
                 <td>
-                    {% if reserva.fechaInicio >= hoy %}
-                        <span class="badge badge-info">{{ reserva.fechaInicio|timesince:hoy }} restante{{ reserva.fechaInicio|timesince:hoy|pluralize }}</span>
+                    {% if dias_restantes > 0 %}
+                        <span class="badge badge-info">{{ dias_restantes }} día{{ dias_restantes|pluralize }}</span>
+                    {% elif dias_restantes == 0 %}
+                        <span class="badge badge-warning">Hoy</span>
                     {% else %}
                         <span class="badge badge-danger">Ya inició</span>
                     {% endif %}
@@ -80,11 +83,12 @@
                     {% endfor %}
                 </td>
             </tr>
+            {% endwith %}
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <p class="alert alert-success">No hay reservas próximas que requieran preparación en los próximos 3 días.</p>
+    <p class="alert alert-success">No hay reservas confirmadas por el cliente que requieran preparación en este momento.</p>
     {% endif %}
 </div>
 

@@ -24,11 +24,7 @@
     <form method="post">
         {% csrf_token %}
 
-        {% for categoria, items in categorias_items.items %}
-        <div class="checklist-categoria">
-            <h4>{{ categoria|upper }}</h4>
-        </div>
-
+        {% if items_verificacion %}
         <table>
             <thead>
                 <tr>
@@ -40,7 +36,7 @@
                 </tr>
             </thead>
             <tbody>
-                {% for item_ver in items %}
+                {% for item_ver in items_verificacion %}
                 <tr class="item-{{ item_ver.estado_entregado }}">
                     <td>
                         <strong>{{ item_ver.item.nombre_item }}</strong>
@@ -78,9 +74,9 @@
                 {% endfor %}
             </tbody>
         </table>
-        {% empty %}
+        {% else %}
         <p class="alert alert-warning">No hay items registrados en el checklist para esta cabaña. Contacte al administrador.</p>
-        {% endfor %}
+        {% endif %}
 
         <div class="form-group mt-30">
             <label for="observaciones_entrega"><strong>Observaciones Generales de Entrega:</strong></label>

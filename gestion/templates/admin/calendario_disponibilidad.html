@@ -31,9 +31,9 @@
                     {% for dia_info in fila.dias %}
                         <td class="calendario-dia-{{ dia_info.estado }}{% if dia_info.es_hoy %} calendario-dia-hoy{% endif %}">
                             {% if dia_info.reserva %}
-                                <span title="Reserva #{{ dia_info.reserva.idReserva }} - {{ dia_info.reserva.cliente.nombre }}">●</span>
+                                <span title="Reserva #{{ dia_info.reserva.idReserva }} - {{ dia_info.reserva.cliente.nombre }}"> * </span>
                             {% elif dia_info.estado == 'mantenimiento' %}
-                                <span title="En Mantenimiento">⚠</span>
+                                <span title="En Mantenimiento">X</span>
                             {% else %}
                                 <span title="Disponible">✓</span>
                             {% endif %}
@@ -46,7 +46,7 @@
     </div>
 
     <div class="calendario-leyenda">
-        <h4>Leyenda:</h4>
+
         <div class="calendario-leyenda-items">
             <div class="calendario-leyenda-item">
                 <span class="calendario-leyenda-color disponible"></span>

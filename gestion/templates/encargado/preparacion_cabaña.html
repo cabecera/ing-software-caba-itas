@@ -116,7 +116,7 @@
         <h3>Verificación de Inventario</h3>
         <p class="alert alert-info">Verifica el inventario de la cabaña. Marca cada item como verificado y registra la cantidad actual.</p>
 
-        {% if verificaciones_inventario %}
+        {% if items_verificacion %}
         <table>
             <thead>
                 <tr>
@@ -128,62 +128,47 @@
                 </tr>
             </thead>
             <tbody>
-                {% for verificacion in verificaciones_inventario %}
-                <tr class="{% if verificacion.verificado %}item-completado{% else %}item-pendiente{% endif %}">
+                {% for item_ver in items_verificacion %}
+                <tr class="{% if item_ver.estado_entregado == 'bueno' %}item-completado{% else %}item-pendiente{% endif %}">
                     <td>
                         <input type="checkbox"
-                               name="inventario_verificado_{{ verificacion.item.idChecklist }}"
-                               {% if verificacion.verificado %}checked{% endif %}
-                               id="inv_{{ verificacion.item.idChecklist }}">
+                               name="inventario_verificado_{{ item_ver.item.idChecklist }}"
+                               id="inv_{{ item_ver.item.idChecklist }}"
+                               onchange="actualizarSelect(this)">
                     </td>
                     <td>
-                        <label for="inv_{{ verificacion.item.idChecklist }}" style="cursor: pointer;">
-                            <strong>• {{ verificacion.item.nombre_item }}</strong>
+                        <label for="inv_{{ item_ver.item.idChecklist }}" style="cursor: pointer;">
+                            <strong>• {{ item_ver.item.nombre_item }}</strong>
                         </label>
                     </td>
                     <td>
                         <div style="display: flex; align-items: center; gap: 5px;">
                             <input type="number"
-                                   name="inventario_cantidad_{{ verificacion.item.idChecklist }}"
-                                   value="{{ verificacion.cantidad_actual }}"
+                                   name="inventario_cantidad_{{ item_ver.item.idChecklist }}"
+                                   value="{{ item_ver.cantidad_entregada }}"
                                    min="0"
                                    class="form-control"
                                    style="width: 70px;"
-                                   id="cantidad_{{ verificacion.item.idChecklist }}"
-                                   data-item-id="{{ verificacion.item.idChecklist }}"
-                                   data-cantidad-esperada="{{ verificacion.cantidad_esperada }}"
-                                   onchange="actualizarEstadoInventario(this)">
-                            <span style="font-weight: bold;">/ {{ verificacion.cantidad_esperada }}</span>
+                                   id="cantidad_{{ item_ver.item.idChecklist }}">
+                            <span style="font-weight: bold;">/ {{ item_ver.item.cantidad_esperada }}</span>
                         </div>
                     </td>
                     <td>
-                        <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                            <select name="inventario_estado_{{ verificacion.item.idChecklist }}"
-                                    id="estado_{{ verificacion.item.idChecklist }}"
+                            <select name="inventario_estado_{{ item_ver.item.idChecklist }}"
+                                    id="estado_{{ item_ver.item.idChecklist }}"
                                     class="form-control"
                                     style="width: 140px;"
-                                    data-item-id="{{ verificacion.item.idChecklist }}"
-                                    data-cantidad-esperada="{{ verificacion.cantidad_esperada }}"
-                                    onchange="actualizarBadgeEstado(this)">
-                                <option value="completo" {% if verificacion.estado_item == 'completo' %}selected{% endif %}>Completo</option>
-                                <option value="faltante" {% if verificacion.estado_item == 'faltante' %}selected{% endif %}>Faltante</option>
-                                <option value="no_funciona" {% if verificacion.estado_item == 'no_funciona' %}selected{% endif %}>No Funciona</option>
+                                    onchange="actualizarCheckbox(this)">
+                                <option value="bueno" {% if item_ver.estado_entregado == 'bueno' %}selected{% endif %}>Bueno</option>
+                                <option value="regular" {% if item_ver.estado_entregado == 'regular' %}selected{% endif %}>Regular</option>
+                                <option value="danado" {% if item_ver.estado_entregado == 'danado' %}selected{% endif %}>Malo</option>
+                                <option value="faltante" {% if item_ver.estado_entregado == 'faltante' %}selected{% endif %}>Faltante</option>
                             </select>
-                            <div id="badge_estado_{{ verificacion.item.idChecklist }}">
-                                {% if verificacion.estado_item == 'no_funciona' %}
-                                    <span class="badge badge-warning">NO FUNCIONA</span>
-                                {% elif verificacion.cantidad_actual >= verificacion.cantidad_esperada %}
-                                    <span class="badge badge-success">COMPLETO</span>
-                                {% else %}
-                                    <span class="badge badge-danger">FALTAN {{ verificacion.cantidad_esperada|add:"-"|add:verificacion.cantidad_actual }}</span>
-                                {% endif %}
-                            </div>
-                        </div>
                     </td>
                     <td>
                         <input type="text"
-                               name="inventario_obs_{{ verificacion.item.idChecklist }}"
-                               value="{{ verificacion.observaciones }}"
+                               name="inventario_obs_{{ item_ver.item.idChecklist }}"
+                               value="{{ item_ver.observaciones }}"
                                placeholder="Observaciones..."
                                class="form-control"
                                style="width: 200px;">
@@ -207,17 +192,28 @@
 
     <div class="card">
         <h3>Reportar Faltantes o Problemas</h3>
-        <p class="alert alert-warning">Si detectas faltantes críticos o problemas que impiden que la cabaña esté lista, crea un reporte para que el administrador lo atienda.</p>
+        <p class="alert alert-info">Si detectas faltantes o problemas durante la preparación, puedes crear un reporte para que el administrador lo atienda.</p>
+
         <div class="form-group">
             <label for="descripcion_faltantes"><strong>Descripción del Problema:</strong></label>
             <textarea name="descripcion_faltantes" id="descripcion_faltantes" rows="4" class="form-control" placeholder="Ej: Faltan 2 toallas, tetera eléctrica no calienta, necesita reemplazo..."></textarea>
         </div>
+
         <div class="form-group">
-            <label>
-                <input type="checkbox" name="faltantes_criticos" id="faltantes_criticos">
-                <strong>Faltantes Críticos</strong> (bloquean que la cabaña esté LISTA hasta que se resuelvan)
-            </label>
+            <div style="display: flex; align-items: start; gap: 10px; padding: 10px; background-color: #fff3cd; border-left: 4px solid #ff9800; border-radius: 4px;">
+                <input type="checkbox" name="faltantes_criticos" id="faltantes_criticos" style="margin-top: 3px;">
+                <div>
+                    <label for="faltantes_criticos" style="cursor: pointer; margin: 0;">
+                        <strong>Marcar como Faltantes Críticos</strong>
+                    </label>
+                    <p style="margin: 5px 0 0 0; font-size: 0.9em; color: #856404;">
+                        Si marcas esta opción, la cabaña NO podrá estar LISTA hasta que el administrador resuelva este reporte.
+                        Usa esto solo para problemas graves que impiden que la cabaña esté lista para recibir huéspedes.
+                    </p>
+                </div>
+            </div>
         </div>
+
         <button type="submit" name="accion" value="crear_reporte_faltantes" class="btn btn-danger">Enviar Reporte al Administrador</button>
     </div>
 
@@ -226,7 +222,7 @@
             <button type="submit" class="btn btn-primary">Guardar Progreso</button>
 
             {% if not tiene_faltantes_criticos %}
-            <button type="submit" name="completar_preparacion" class="btn btn-success">
+            <button type="submit" name="completar_preparacion" value="1" class="btn btn-success">
                 Completar Preparación e Ir al Checklist de Entrega
             </button>
             {% else %}
@@ -251,6 +247,29 @@
 </style>
 
 <script>
+function actualizarCheckbox(selectElement) {
+    // Cuando cambia el select, actualizar el checkbox
+    const itemId = selectElement.id.replace('estado_', '');
+    const checkbox = document.getElementById('inv_' + itemId);
+
+    if (selectElement.value === 'bueno') {
+        checkbox.checked = true;
+    } else {
+        checkbox.checked = false;
+    }
+}
+
+function actualizarSelect(checkboxElement) {
+    // Cuando cambia el checkbox, actualizar el select
+    const itemId = checkboxElement.id.replace('inv_', '');
+    const select = document.getElementById('estado_' + itemId);
+
+    if (checkboxElement.checked) {
+        select.value = 'bueno';
+    }
+}
+
+// Función antigua (mantener por compatibilidad pero no se usa)
 function actualizarEstadoInventario(inputElement) {
     const itemId = inputElement.getAttribute('data-item-id');
     const cantidadEsperada = parseInt(inputElement.getAttribute('data-cantidad-esperada')) || 0;

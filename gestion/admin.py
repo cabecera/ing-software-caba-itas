@@ -3,8 +3,7 @@ from .models import (
     Cliente, Reserva, Cabaña, Pago,
     Implemento, PrestamoImplemento,
     Notificacion, ChecklistInventario, EntregaCabaña, ItemVerificacion,
-    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado, ReporteFaltantes,
-    VerificacionInventarioPreparacion
+    TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado, ReporteFaltantes
 )
 
 @admin.register(Cliente)
@@ -89,13 +88,4 @@ class ReporteFaltantesAdmin(admin.ModelAdmin):
     search_fields = ('cabaña__nombre', 'descripcion', 'encargado__username')
     readonly_fields = ('fecha_creacion',)
     date_hierarchy = 'fecha_creacion'
-
-@admin.register(VerificacionInventarioPreparacion)
-class VerificacionInventarioPreparacionAdmin(admin.ModelAdmin):
-    list_display = ('idVerificacion', 'preparacion', 'item', 'cantidad_actual', 'cantidad_esperada', 'estado_item', 'verificado')
-    list_filter = ('estado_item', 'verificado', 'preparacion')
-    search_fields = ('item__nombre_item', 'preparacion__reserva__cabaña__nombre')
-    readonly_fields = ('idVerificacion',)
-
-
 

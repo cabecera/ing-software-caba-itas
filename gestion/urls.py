@@ -34,6 +34,7 @@ urlpatterns = [
     path('encargado/dashboard/', views.dashboard_encargado, name='dashboard_encargado'),
     path('encargado/preparar-cabañas/', views.preparar_cabañas, name='preparar_cabañas'),
     path('encargado/preparacion-cabaña/<int:reserva_id>/', views.preparacion_cabaña, name='preparacion_cabaña'),
+    path('encargado/checklist-entrega/<int:reserva_id>/', views.checklist_entrega_encargado, name='checklist_entrega_encargado'),
     path('encargado/inventario/', views.inventario_cabañas, name='inventario_cabañas'),
     path('encargado/reporte-faltantes/', views.reporte_faltantes, name='reporte_faltantes'),
     path('encargado/notificaciones/', views.notificaciones_encargado, name='notificaciones_encargado'),

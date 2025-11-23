@@ -12,7 +12,6 @@ from .models import (
     Implemento, PrestamoImplemento, Mantenimiento, Notificacion,
     ChecklistInventario, EntregaCabaña, ItemVerificacion,
     TareaPreparacion, PreparacionCabaña, ItemPreparacionCompletado, ReporteFaltantes,
-    VerificacionInventarioPreparacion
 )
 from .forms import (
     RegistroClienteForm, ReservaForm, EncuestaForm, PagoForm,
@@ -127,7 +126,8 @@ def portal_cliente(request):
     """Dashboard del cliente"""
     cliente = request.user.cliente
     reservas = Reserva.objects.filter(cliente=cliente).order_by('-fechaCreacion')[:5]
-    notificaciones = Notificacion.objects.filter(usuario=request.user, leida=False).order_by('-fechaEnvio')[:5]
+    # Mostrar todas las notificaciones recientes (no solo las no leídas) para mejor visibilidad
+    notificaciones = Notificacion.objects.filter(usuario=request.user).order_by('-fechaEnvio')[:10]
 
     context = {
         'cliente': cliente,
@@ -141,6 +141,8 @@ def portal_cliente(request):
 def solicitar_reserva(request):
     """Solicitar una nueva reserva - Mejorado con verificación de mantenimiento"""
     cliente = request.user.cliente
+    hoy = timezone.now().date()
+    fecha_minima = hoy + timedelta(days=4)  # Mínimo 4 días de anticipación
 
     if request.method == 'POST':
         form = ReservaForm(request.POST)
@@ -148,6 +150,21 @@ def solicitar_reserva(request):
             reserva = form.save(commit=False)
             reserva.cliente = cliente
             reserva.estado = 'pendiente'
+
+            # Validar que la fecha de inicio sea al menos 4 días después de hoy
+            if reserva.fechaInicio < fecha_minima:
+                messages.error(
+                    request,
+                    f'Debes solicitar la reserva con al menos 4 días de anticipación. '
+                    f'La fecha mínima permitida es {fecha_minima.strftime("%d/%m/%Y")}.'
+                )
+                cabañas = Cabaña.objects.filter(estado__in=['disponible', 'reservada'])
+                cabañas_disponibles = [c for c in cabañas if c.estado != 'mantenimiento']
+                return render(request, 'cliente/solicitar_reserva.html', {
+                    'form': form,
+                    'cabañas': cabañas_disponibles,
+                    'fecha_minima': fecha_minima
+                })
 
             # Calcular monto
             dias = (reserva.fechaFin - reserva.fechaInicio).days
@@ -201,7 +218,8 @@ def solicitar_reserva(request):
 
     return render(request, 'cliente/solicitar_reserva.html', {
         'form': form,
-        'cabañas': cabañas_disponibles
+        'cabañas': cabañas_disponibles,
+        'fecha_minima': fecha_minima
     })
 
 
@@ -211,7 +229,7 @@ def mis_reservas(request):
     cliente = request.user.cliente
     hoy = timezone.now().date()
 
-    reservas = Reserva.objects.filter(cliente=cliente).order_by('-fechaCreacion')
+    reservas = Reserva.objects.filter(cliente=cliente).select_related('cabaña').order_by('-fechaCreacion')
 
     # Enviar recordatorios automáticos a 4 días exactos
     for reserva in reservas:
@@ -372,6 +390,28 @@ def calcular_cargos_devolucion(entrega):
 
 def iniciar_preparacion_cabañas(reserva):
     """Inicia automáticamente la preparación de cabañas para reservas confirmadas"""
+    # Cambiar estado de la cabaña a 'en_preparacion'
+    reserva.cabaña.estado = 'en_preparacion'
+    reserva.cabaña.save()
+
+    # Crear PreparacionCabaña automáticamente si no existe
+    preparacion, created = PreparacionCabaña.objects.get_or_create(
+        reserva=reserva,
+        defaults={
+            'estado': 'pendiente'
+        }
+    )
+
+    # Si se creó, inicializar tareas de preparación
+    if created:
+        tareas = TareaPreparacion.objects.all().order_by('categoria', 'orden')
+        for tarea in tareas:
+            ItemPreparacionCompletado.objects.create(
+                preparacion=preparacion,
+                tarea=tarea,
+                completado=False
+            )
+
     # Crear notificación para el encargado
     usuarios_encargados = User.objects.filter(groups__name='Encargados')
     for usuario in usuarios_encargados:
@@ -383,8 +423,7 @@ def iniciar_preparacion_cabañas(reserva):
         )
 
     # Crear entrega y checklist automático si no existe
-    if not hasattr(reserva, 'entrega'):
-        generar_checklist_desde_reserva(reserva)
+    generar_checklist_desde_reserva(reserva)
 
 
 @cliente_required
@@ -674,12 +713,32 @@ def dashboard_encargado(request):
         confirmacion_cliente=True
     ).select_related('cliente', 'cabaña', 'entrega')
 
+    # Cabañas agrupadas por estado
+    cabañas_en_preparacion = Cabaña.objects.filter(estado='en_preparacion').order_by('nombre')
+    cabañas_pendientes = Cabaña.objects.filter(estado='pendiente').order_by('nombre')
+    cabañas_listas = Cabaña.objects.filter(estado='lista').order_by('nombre')
+
+    # Preparaciones activas (para mostrar en las tablas)
+    preparaciones_activas = PreparacionCabaña.objects.filter(
+        reserva__in=reservas_proximas
+    ).select_related('reserva', 'reserva__cabaña', 'encargado')
+
+    # Reportes de faltantes pendientes
+    reportes_faltantes_pendientes = ReporteFaltantes.objects.filter(
+        estado__in=['pendiente', 'atendido']
+    ).select_related('cabaña', 'encargado')
+
     context = {
         'mantenimientos_pendientes': mantenimientos_pendientes,
         'implementos_faltantes': implementos_faltantes,
         'reservas_proximas': reservas_proximas,
         'confirmaciones_pendientes': confirmaciones_pendientes,
         'reservas_urgentes': reservas_urgentes,
+        'cabañas_en_preparacion': cabañas_en_preparacion,
+        'cabañas_pendientes': cabañas_pendientes,
+        'cabañas_listas': cabañas_listas,
+        'preparaciones_activas': preparaciones_activas,
+        'reportes_faltantes_pendientes': reportes_faltantes_pendientes,
         'hoy': hoy,
     }
     return render(request, 'encargado/dashboard_encargado.html', context)
@@ -769,22 +828,55 @@ def estado_cabañas(request):
 def preparar_cabañas(request):
     """Lista de cabañas que requieren preparación"""
     hoy = timezone.now().date()
+
+    # Mostrar todas las reservas confirmadas por el cliente que están en el futuro
+    # (hasta 7 días para tener un margen razonable)
     reservas_proximas = Reserva.objects.filter(
-        fechaInicio__lte=hoy + timedelta(days=3),
         fechaInicio__gte=hoy,
+        fechaInicio__lte=hoy + timedelta(days=7),
         estado='confirmada',
         confirmacion_cliente=True
     ).select_related('cliente', 'cabaña', 'entrega').order_by('fechaInicio')
 
-    # Preparaciones existentes
+    # También incluir reservas con preparaciones existentes, aunque estén más lejos
+    preparaciones_existentes = PreparacionCabaña.objects.filter(
+        estado__in=['pendiente', 'en_proceso']
+    ).select_related('reserva', 'reserva__cliente', 'reserva__cabaña', 'reserva__entrega', 'encargado')
+
+    # Obtener IDs de reservas que ya están en reservas_proximas
+    ids_reservas_proximas = set(reservas_proximas.values_list('idReserva', flat=True))
+
+    # Agregar reservas de preparaciones existentes que no estén ya en reservas_proximas
+    reservas_adicionales = []
+    for prep in preparaciones_existentes:
+        if prep.reserva.idReserva not in ids_reservas_proximas:
+            # Verificar que la reserva esté confirmada por el cliente
+            if prep.reserva.estado == 'confirmada' and prep.reserva.confirmacion_cliente:
+                reservas_adicionales.append(prep.reserva)
+
+    # Combinar ambas listas
+    todas_reservas = list(reservas_proximas) + reservas_adicionales
+    todas_reservas = sorted(todas_reservas, key=lambda r: r.fechaInicio)
+
+    # Calcular días restantes para cada reserva
+    reservas_con_dias = []
+    for reserva in todas_reservas:
+        dias_restantes = (reserva.fechaInicio - hoy).days
+        reservas_con_dias.append({
+            'reserva': reserva,
+            'dias_restantes': dias_restantes
+        })
+
+    # Preparaciones existentes (todas, no solo las de reservas_proximas)
+    todas_ids_reservas = [r['reserva'].idReserva for r in reservas_con_dias]
     preparaciones = PreparacionCabaña.objects.filter(
-        reserva__in=reservas_proximas
+        reserva__idReserva__in=todas_ids_reservas
     ).select_related('reserva', 'encargado')
 
     preparaciones_dict = {p.reserva.idReserva: p for p in preparaciones}
 
     return render(request, 'encargado/preparar_cabañas.html', {
-        'reservas_proximas': reservas_proximas,
+        'reservas_con_dias': reservas_con_dias,
         'preparaciones': preparaciones_dict,
         'hoy': hoy
     })
@@ -814,6 +906,34 @@ def preparacion_cabaña(request, reserva_id):
                 completado=False
             )
 
+    # Crear o obtener entrega para verificación de inventario
+    entrega, entrega_created = EntregaCabaña.objects.get_or_create(reserva=reserva)
+
+    # Obtener items del checklist base
+    items_checklist_base = ChecklistInventario.objects.filter(cabaña=reserva.cabaña).order_by('orden', 'categoria')
+
+    # Crear ItemVerificacion para cada item del checklist si no existen
+    # Iniciar con estado 'regular' para que los checkboxes empiecen desmarcados
+    for item_checklist in items_checklist_base:
+        ItemVerificacion.objects.get_or_create(
+            entrega=entrega,
+            item=item_checklist,
+            defaults={
+                'cantidad_entregada': item_checklist.cantidad_esperada,
+                'estado_entregado': 'regular'  # Cambiar a 'regular' para que checkboxes empiecen desmarcados
+            }
+        )
+
+    # Obtener items de verificación para la preparación
+    items_verificacion = ItemVerificacion.objects.filter(entrega=entrega).order_by('item__orden', 'item__categoria')
+
+    # Verificar si hay faltantes críticos pendientes
+    tiene_faltantes_criticos = ReporteFaltantes.objects.filter(
+        cabaña=reserva.cabaña,
+        estado__in=['pendiente', 'atendido'],
+        faltantes_criticos=True
+    ).exists()
+
     # Obtener items de preparación agrupados por categoría
     items_preparacion = ItemPreparacionCompletado.objects.filter(
         preparacion=preparacion
@@ -830,6 +950,8 @@ def preparacion_cabaña(request, reserva_id):
     dias_restantes = (reserva.fechaInicio - timezone.now().date()).days
 
     if request.method == 'POST':
+        accion = request.POST.get('accion', '')
+
         # Procesar tareas completadas
         tareas_completadas = request.POST.getlist('tareas_completadas')
 
@@ -847,29 +969,125 @@ def preparacion_cabaña(request, reserva_id):
                     item.fecha_completado = None
                     item.save()
 
+        # Procesar verificación de inventario
+        for item_ver in items_verificacion:
+            item_id = str(item_ver.item.idChecklist)
+            verificado = request.POST.get(f'inventario_verificado_{item_id}') == 'on'
+            cantidad_actual = request.POST.get(f'inventario_cantidad_{item_id}', item_ver.item.cantidad_esperada)
+            estado_item = request.POST.get(f'inventario_estado_{item_id}', 'regular')
+            observaciones = request.POST.get(f'inventario_obs_{item_id}', '')
+
+            # Actualizar cantidad_entregada (que representa la cantidad actual durante preparación)
+            try:
+                item_ver.cantidad_entregada = int(cantidad_actual)
+            except (ValueError, TypeError):
+                item_ver.cantidad_entregada = item_ver.item.cantidad_esperada
+
+            # Si el checkbox está marcado, forzar estado a 'bueno'
+            # Si no está marcado, mantener el estado seleccionado en el select
+            if verificado:
+                item_ver.estado_entregado = 'bueno'
+            else:
+                # Mantener el estado seleccionado en el select (o 'regular' si no se seleccionó nada)
+                item_ver.estado_entregado = estado_item if estado_item else 'regular'
+
+            if observaciones:
+                item_ver.observaciones = observaciones
+
+            item_ver.save()
+
+        # Procesar reporte de faltantes
+        if accion == 'crear_reporte_faltantes':
+            descripcion = request.POST.get('descripcion_faltantes', '')
+            faltantes_criticos = request.POST.get('faltantes_criticos') == 'on'
+
+            if descripcion:
+                reporte = ReporteFaltantes.objects.create(
+                    cabaña=reserva.cabaña,
+                    encargado=request.user,
+                    preparacion=preparacion,
+                    descripcion=descripcion,
+                    faltantes_criticos=faltantes_criticos
+                )
+
+                # Cambiar estado de cabaña según si son críticos
+                if faltantes_criticos:
+                    reserva.cabaña.estado = 'pendiente'
+                    reserva.cabaña.save()
+
+                messages.success(request, 'Reporte de faltantes creado exitosamente.')
+                return redirect('preparacion_cabaña', reserva_id=reserva.idReserva)
+
         # Actualizar observaciones
         observaciones = request.POST.get('observaciones', '')
         preparacion.observaciones = observaciones
 
         # Verificar si todas las tareas están completadas
         porcentaje = preparacion.porcentaje_completado()
-        if request.POST.get('completar_preparacion'):
+
+        # Verificar si se presionó el botón "Completar Preparación"
+        completar_preparacion = request.POST.get('completar_preparacion')
+
+        if completar_preparacion:
             preparacion.estado = 'completada'
             preparacion.fecha_completacion = timezone.now()
+
+            # Cambiar estado de cabaña a 'lista' si no hay reportes críticos pendientes
+            reportes_criticos = ReporteFaltantes.objects.filter(
+                cabaña=reserva.cabaña,
+                estado__in=['pendiente', 'atendido'],
+                faltantes_criticos=True
+            )
+
+            # Notificar al cliente que la cabaña está lista (siempre, independientemente de reportes críticos)
+            if not reportes_criticos.exists():
+                # Cabaña completamente lista
+                reserva.cabaña.estado = 'lista'
+                reserva.cabaña.save()
+
+            # Crear notificación SIEMPRE que se complete la preparación
+            try:
+                # Verificar si el cliente tiene usuario asociado
+                if hasattr(reserva.cliente, 'usuario') and reserva.cliente.usuario:
+                    if not reportes_criticos.exists():
+                        # Cabaña completamente lista
+                        mensaje = f'¡Excelente noticia! La cabaña {reserva.cabaña.nombre} está lista y preparada para tu llegada. Por favor, llega el día acordado: {reserva.fechaInicio.strftime("%d/%m/%Y")}. ¡Te esperamos!'
+                    else:
+                        # Cabaña lista pero con reportes pendientes
+                        mensaje = f'La preparación de la cabaña {reserva.cabaña.nombre} ha sido completada. Hay algunos reportes pendientes que el administrador está resolviendo. Te notificaremos cuando todo esté listo. Fecha de llegada: {reserva.fechaInicio.strftime("%d/%m/%Y")}.'
+
+                    notificacion = Notificacion.objects.create(
+                        usuario=reserva.cliente.usuario,
+                        tipo='general',
+                        mensaje=mensaje,
+                        fechaEnvio=timezone.now(),
+                        leida=False
+                    )
+                    # Mensaje de debug visible
+                    messages.info(request, f'Notificación enviada al cliente {reserva.cliente.nombre} (ID: {notificacion.idNotificacion})')
+                else:
+                    # Cliente sin usuario - mostrar mensaje de advertencia
+                    messages.warning(request, f'⚠️ No se pudo enviar notificación: El cliente {reserva.cliente.nombre} no tiene usuario asociado.')
+            except Exception as e:
+                # Si hay error al crear la notificación, mostrar mensaje de error
+                messages.error(request, f'Error al crear notificación para cliente {reserva.cliente.nombre}: {str(e)}')
+                import logging
+                logger = logging.getLogger(__name__)
+                logger.error(f'Error al crear notificación para cliente {reserva.cliente.idCliente}: {e}')
+
+            preparacion.save()
+
+            # Crear entrega automáticamente si no existe
+            generar_checklist_desde_reserva(reserva)
             messages.success(request, 'Preparación completada exitosamente. La cabaña está lista para entrega.')
+            return redirect('checklist_entrega_encargado', reserva_id=reserva.idReserva)
         elif porcentaje > 0:
             preparacion.estado = 'en_proceso'
         else:
             preparacion.estado = 'pendiente'
 
         preparacion.save()
-
-        # Redirigir según acción
-        if request.POST.get('completar_preparacion'):
-            # Crear entrega automáticamente si no existe
-            generar_checklist_desde_reserva(reserva)
-            messages.success(request, 'Preparación completada. El checklist de entrega está listo.')
-            return redirect('checklist_entrega_encargado', reserva_id=reserva.idReserva)
+        messages.success(request, 'Progreso guardado correctamente.')
 
         return redirect('preparacion_cabaña', reserva_id=reserva.idReserva)
 
@@ -879,7 +1097,9 @@ def preparacion_cabaña(request, reserva_id):
         'tareas_por_categoria': tareas_por_categoria,
         'items_preparacion': items_preparacion,
         'porcentaje_completado': porcentaje_completado,
-        'dias_restantes': dias_restantes
+        'dias_restantes': dias_restantes,
+        'items_verificacion': items_verificacion,
+        'tiene_faltantes_criticos': tiene_faltantes_criticos
     })
 
 
@@ -902,7 +1122,7 @@ def checklist_entrega_encargado(request, reserva_id):
     # Generar checklist automáticamente si no existe
     entrega = generar_checklist_desde_reserva(reserva)
 
-    # Obtener items de verificación agrupados por categoría
+    # Obtener items de verificación (sin agrupar por categoría)
     items_verificacion = ItemVerificacion.objects.filter(entrega=entrega).order_by('item__orden', 'item__categoria', 'item__nombre_item')
 
     if not items_verificacion.exists():
@@ -917,13 +1137,6 @@ def checklist_entrega_encargado(request, reserva_id):
                 }
             )
         items_verificacion = ItemVerificacion.objects.filter(entrega=entrega).order_by('item__orden', 'item__categoria', 'item__nombre_item')
-
-    categorias_items = {}
-    for item_ver in items_verificacion:
-        categoria = item_ver.item.get_categoria_display()
-        if categoria not in categorias_items:
-            categorias_items[categoria] = []
-        categorias_items[categoria].append(item_ver)
 
     if request.method == 'POST':
         # Procesar verificación del encargado
@@ -952,7 +1165,6 @@ def checklist_entrega_encargado(request, reserva_id):
     return render(request, 'encargado/checklist_entrega.html', {
         'reserva': reserva,
         'entrega': entrega,
-        'categorias_items': categorias_items,
         'items_verificacion': items_verificacion
     })
 

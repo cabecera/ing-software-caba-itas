@@ -35,6 +35,9 @@
                         <input type="hidden" name="cabaña_id" value="{{ cabaña.idCabaña }}">
                         <input type="hidden" name="accion" value="cambiar_estado">
                         <select name="estado" onchange="this.form.submit()" style="padding: 5px;">
+                            <option value="lista" {% if cabaña.estado == 'lista' %}selected{% endif %}>Lista</option>
+                            <option value="en_preparacion" {% if cabaña.estado == 'en_preparacion' %}selected{% endif %}>En Preparación</option>
+                            <option value="pendiente" {% if cabaña.estado == 'pendiente' %}selected{% endif %}>Pendiente</option>
                             <option value="disponible" {% if cabaña.estado == 'disponible' %}selected{% endif %}>Disponible</option>
                             <option value="ocupada" {% if cabaña.estado == 'ocupada' %}selected{% endif %}>Ocupada</option>
                             <option value="mantenimiento" {% if cabaña.estado == 'mantenimiento' %}selected{% endif %}>En Mantenimiento</option>
