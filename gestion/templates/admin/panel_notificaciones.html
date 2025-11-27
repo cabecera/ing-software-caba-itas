@@ -48,7 +48,7 @@
         </thead>
         <tbody>
             {% for notif in notificaciones %}
-            <tr style="{% if not notif.leida %}background-color: #fff3cd;{% endif %}">
+            <tr{% if not notif.leida %} style="background-color: #fff3cd;"{% endif %}>
                 <td>#{{ notif.idNotificacion }}</td>
                 <td>{{ notif.usuario.username|default:"Sistema" }}</td>
                 <td>{{ notif.get_tipo_display }}</td>
@@ -98,5 +98,6 @@
     <a href="{% url 'dashboard_admin' %}" class="btn">Volver al Dashboard</a>
 </div>
 {% endblock %}
+
 
 
